@@ -1,0 +1,11 @@
+"system_id","system_name","pwsid","county","population","provider_type","is_wholesale","total_sources","total_sw_sources","has_gw_supply","gw_mcl_compliant","lat","lon"
+"sys_1","San Francisco PWS","CA1234567","San Francisco",147351,"Retail & Wholesale","Y",4,2,"N","Unknown",35.9348885008367,-117.624420165666
+"sys_2","Los Angeles PWS","CA2345678","Los Angeles",395211,"Retail & Wholesale","N",1,2,"Y","Y",34.6112448339118,-121.537210423499
+"sys_3","San Diego PWS","CA3456789","San Diego",207444,"Retail","Y",3,3,"Y","Unknown",35.3399070999585,-121.781173696392
+"sys_4","Sacramento PWS","CA4567890","Sacramento",442094,"Retail & Wholesale","N",5,0,"Y","Unknown",37.674305730965,-118.907939412282
+"sys_5","Fresno PWS","CA5678901","Fresno",470531,"Wholesale","N",4,2,"Y","Unknown",36.2970572882332,-120.610659402562
+"sys_6","Oakland PWS","CA6789012","Alameda",27550,"Retail","N",2,0,"Y","Y",38.3350770871621,-118.887830296182
+"sys_7","San Jose PWS","CA7890123","Santa Clara",266412,"Wholesale","N",5,2,"N","Y",34.5657555434154,-120.737947166315
+"sys_8","Long Beach PWS","CA8901234","Los Angeles",446747,"Wholesale","Y",1,3,"Y","Y",36.3919100782368,-121.467698844033
+"sys_9","Bakersfield PWS","CA9012345","Kern",277960,"Retail","Y",1,1,"N","Y",39.4172633899143,-118.197381342761
+"sys_10","Santa Cruz PWS","CA0123456","Santa Cruz",231024,"Retail","N",2,0,"N","Unknown",38.9117811291944,-121.985227573081
