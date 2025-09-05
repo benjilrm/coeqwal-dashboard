@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>California Water Systems Network Dashboard</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- DataTables CSS -->
+    <link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .container-fluid {
+            height: 100vh;
+            padding: 0;
+        }
+        .row {
+            margin: 0;
+            height: 100%;
+        }
+        #map {
+            height: 600px;
+            width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            z-index: 1;
+        }
+        .sidebar {
+            height: 100%;
+            overflow-y: auto;
+            background: linear-gradient(to bottom, #e6f2ff, #c9e5ff);
+            padding: 20px;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+        .main-content {
+            padding: 20px;
+            height: 100%;
+            overflow-y: auto;
+        }
+        .card {
+            margin-bottom: 20px;
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        }
+        .card-header {
+            background: linear-gradient(to right, #007bff, #0056b3);
+            color: white;
+            border-radius: 10px 10px 0 0 !important;
+            font-weight: 600;
+        }
+        .btn-primary {
+            background: linear-gradient(to right, #007bff, #0056b3);
+            border: none;
+        }
+        .btn-secondary {
+            background: linear-gradient(to right, #6c757d, #5a6268);
+            border: none;
+        }
+        .nav-tabs .nav-link.active {
+            font-weight: bold;
+            border-bottom: 3px solid #007bff;
+        }
+        h2 {
+            color: #0056b3;
+            font-weight: 700;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+        .form-range::-webkit-slider-thumb {
+            background: #007bff;
+        }
+        .form-range::-moz-range-thumb {
+            background: #007bff;
+        }
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-size: 24px;
+            color: #007bff;
+        }
+        .legend {
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            position: absolute;
+            bottom: 30px;
+            right: 20px;
+            z-index: 1000;
+        }
+        .legend i {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            margin-right: 5px;
+            border-radius: 50%;
+        }
+        .instructions {
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .instructions h4 {
+            margin-top: 0;
+            color: #007bff;
+        }
+        /* Arrow legend styling */
+        .legend-arrow {
+            display: inline-block;
+            width: 20px;
+            height: 3px;
+            background: #0066CC;
+            position: relative;
+            margin-right: 5px;
+            border-radius: 0;
+        }
+        .legend-arrow::after {
+            content: '';
+            position: absolute;
+            right: -5px;
+            top: -3px;
+            width: 0;
+            height: 0;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+            border-left: 5px solid #0066CC;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-3 col-lg-3 sidebar">
+                <div class="p-3">
+                    <h2 class="text-center mb-4">California Water Systems</h2>
+                    
+                 
+                    
+                    <!-- Search functionality -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5>Search & Zoom</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-2">
+                                <label for="searchSystem" class="form-label">Search System:</label>
+                                <select id="searchSystem" class="form-select">
+                                    <option value="">Type system name...</option>
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <label for="searchSource" class="form-label">Search Source:</label>
+                                <select id="searchSource" class="form-select">
+                                    <option value="">Type source name...</option>
+                                </select>
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button id="zoomSelected" class="btn btn-primary">Zoom to Selected</button>
+                                <button id="resetView" class="btn btn-secondary">Reset View</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- System Filters -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5>System Filters</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-2">
+                                <label for="providerType" class="form-label">Provider Type:</label>
+                                <select id="providerType" class="form-select">
+                                    <option value="All">All</option>
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <label for="wholesale" class="form-label">Wholesale:</label>
+                                <select id="wholesale" class="form-select">
+                                    <option value="All">All</option>
+                                    <option value="Y">Y</option>
+                                    <option value="N">N</option>
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <label for="gwSupply" class="form-label">GW Supply:</label>
+                                <select id="gwSupply" class="form-select">
+                                    <option value="All">All</option>
+                                    <option value="Y">Y</option>
+                                    <option value="N">N</option>
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <label for="population" class="form-label">Min Population:</label>
+                                <input type="range" class="form-range" id="population" min="0" step="1000">
+                                <span id="populationValue">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Source Filters -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5>Source Filters</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-2">
+                                <label for="sourceType" class="form-label">Source Type:</label>
+                                <select id="sourceType" class="form-select">
+                                    <option value="All">All</option>
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <label for="project" class="form-label">Project:</label>
+                                <select id="project" class="form-select">
+                                    <option value="All">All</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Connection Filters -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5>Connection Filters</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-2">
+                                <label for="purchaseType" class="form-label">Purchase Type:</label>
+                                <select id="purchaseType" class="form-select">
+                                    <option value="All">All</option>
+                                    <option value="Purchased">Purchased</option>
+                                    <option value="Direct">Direct</option>
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <label for="volume" class="form-label">Min Volume (MGD):</label>
+                                <input type="range" class="form-range" id="volume" min="0" step="10">
+                                <span id="volumeValue">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Main content -->
+            <div class="col-md-9 col-lg-9 main-content">
+                <div id="loading" class="loading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <span class="ms-3">Loading water system data...</span>
+                </div>
+                
+                <div id="content" style="display: none;">
+                    <div id="map"></div>
+                    
+                    <div class="legend">
+                        <strong>Map Legend:</strong>
+                        <div><i style="background: red;"></i> Water Source</div>
+                        <div><i style="background: blue;"></i> Water System (size indicates population)</div>
+                        <div><span class="legend-arrow"></span> Connection (direction of flow)</div>
+                    </div>
+                    
+                    <ul class="nav nav-tabs mt-4" id="myTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="systems-tab" data-bs-toggle="tab" data-bs-target="#systems" type="button" role="tab">Systems</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="connections-tab" data-bs-toggle="tab" data-bs-target="#connections" type="button" role="tab">Connections</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="sources-tab" data-bs-toggle="tab" data-bs-target="#sources" type="button" role="tab">Sources</button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="myTabContent">
+                        <div class="tab-pane fade show active" id="systems" role="tabpanel">
+                            <table id="systemsTable" class="table table-striped" style="width:100%"></table>
+                        </div>
+                        <div class="tab-pane fade" id="connections" role="tabpanel">
+                            <table id="connectionsTable" class="table table-striped" style="width:100%"></table>
+                        </div>
+                        <div class="tab-pane fade" id="sources" role="tabpanel">
+                            <table id="sourcesTable" class="table table-striped" style="width:100%"></table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    
+    <!-- Leaflet Polyline Decorator for arrowheads -->
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.min.js"></script>
+    
+    <!-- Custom JavaScript -->
+    <script>
+        // Global variables
+        let map;
+        let systemsData = [];
+        let sourcesData = [];
+        let connectionsData = [];
+        let systemsTable, connectionsTable, sourcesTable;
+        let currentMarkers = [];
+        let currentLines = [];
+        let currentDecorators = [];
+
+        // Initialize application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+        });
+
+        async function initializeApp() {
+            // Load data
+            try {
+                await loadCSVData();
+            } catch (error) {
+                console.error("Error loading CSV data:", error);
+                alert("Failed to load CSV data. Using sample data instead. Check console for details.");
+                await loadSampleData();
+            }
+            
+            // Initialize map
+            initMap();
+            
+            // Initialize filters
+            initFilters();
+            
+            // Initialize data tables
+            initDataTables();
+            
+            // Render initial data
+            renderData();
+            
+            // Hide loading and show content
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+        }
+
+        // Load CSV data
+        async function loadCSVData() {
+            // Load systems data
+            systemsData = await loadCSV('Data/20250903_fake_systems.csv');
+            
+            // Load sources data
+            sourcesData = await loadCSV('Data/20250903_fake_sources.csv');
+            
+            // Load connections data
+            connectionsData = await loadCSV('Data/20250903_fake_links.csv');
+            
+            // Process data (convert string numbers to actual numbers)
+            processData();
+        }
+
+        function loadCSV(url) {
+            return new Promise((resolve, reject) => {
+                Papa.parse(url, {
+                    download: true,
+                    header: true,
+                    dynamicTyping: true,
+                    complete: function(results) {
+                        resolve(results.data);
+                    },
+                    error: function(error) {
+                        reject(error);
+                    }
+                });
+            });
+        }
+
+        function processData() {
+            // Convert numeric fields if needed
+            systemsData.forEach(system => {
+                system.population = Number(system.population) || 0;
+                system.lon = Number(system.lon) || 0;
+                system.lat = Number(system.lat) || 0;
+            });
+            
+            sourcesData.forEach(source => {
+                source.capacity_mgd = Number(source.capacity_mgd) || 0;
+                source.source_lon = Number(source.source_lon) || 0;
+                source.source_lat = Number(source.source_lat) || 0;
+            });
+            
+            connectionsData.forEach(connection => {
+                connection.volume_mgd = Number(connection.volume_mgd) || 0;
+                connection.avg_pct_supply = Number(connection.avg_pct_supply) || 0;
+                // Convert purchase to boolean if it's stored as string
+                if (typeof connection.purchase === 'string') {
+                    connection.purchase = connection.purchase.toLowerCase() === 'true' || connection.purchase === '1';
+                }
+            });
+        }
+
+        // Load sample data (if CSV loading fails)
+        async function loadSampleData() {
+            // Sample data - replace with your actual data loading from CSV files
+            systemsData = [
+                {system_id: "S1", system_name: "Central Valley Water", pwsid: "CA123", county: "Fresno", population: 50000, provider_type: "Municipal", is_wholesale: "Y", has_gw_supply: "Y", lon: -119.5, lat: 36.5},
+                {system_id: "S2", system_name: "Coastal Water District", pwsid: "CA124", county: "Monterey", population: 75000, provider_type: "District", is_wholesale: "N", has_gw_supply: "Y", lon: -121.5, lat: 36.8},
+                {system_id: "S3", system_name: "Mountain Springs Water", pwsid: "CA125", county: "Tuolumne", population: 12000, provider_type: "Private", is_wholesale: "N", has_gw_supply: "N", lon: -120.0, lat: 38.0},
+                {system_id: "S4", system_name: "Bay Area Water Co.", pwsid: "CA126", county: "Alameda", population: 150000, provider_type: "Municipal", is_wholesale: "Y", has_gw_supply: "Y", lon: -122.0, lat: 37.8},
+                {system_id: "S5", system_name: "Delta Water Supply", pwsid: "CA127", county: "Sacramento", population: 80000, provider_type: "District", is_wholesale: "Y", has_gw_supply: "N", lon: -121.3, lat: 38.5}
+            ];
+            
+            sourcesData = [
+                {source_id: "SRC1", source_name: "Sierra Snowmelt", source_type: "Surface", project: "State Project", capacity_mgd: 250, source_lon: -119.0, source_lat: 37.5},
+                {source_id: "SRC2", source_name: "Coastal Aquifer", source_type: "Groundwater", project: "Local", capacity_mgd: 100, source_lon: -121.8, source_lat: 36.6},
+                {source_id: "SRC3", source_name: "Feather River", source_type: "Surface", project: "State Project", capacity_mgd: 300, source_lon: -121.0, source_lat: 39.5},
+                {source_id: "SRC4", source_name: "San Joaquin Aquifer", source_type: "Groundwater", project: "Local", capacity_mgd: 150, source_lon: -120.5, source_lat: 37.0},
+                {source_id: "SRC5", source_name: "Bay Desalination", source_type: "Desalination", project: "Regional", capacity_mgd: 50, source_lon: -122.4, source_lat: 37.7}
+            ];
+            
+            connectionsData = [
+                {from: "SRC1", to: "S1", volume_mgd: 120, purchase: true, avg_pct_supply: 80},
+                {from: "SRC1", to: "S4", volume_mgd: 90, purchase: true, avg_pct_supply: 60},
+                {from: "SRC2", to: "S2", volume_mgd: 75, purchase: false, avg_pct_supply: 75},
+                {from: "SRC3", to: "S5", volume_mgd: 110, purchase: true, avg_pct_supply: 70},
+                {from: "SRC4", to: "S1", volume_mgd: 60, purchase: false, avg_pct_supply: 40},
+                {from: "SRC4", to: "S3", volume_mgd: 25, purchase: false, avg_pct_supply: 85},
+                {from: "SRC5", to: "S4", volume_mgd: 40, purchase: true, avg_pct_supply: 30}
+            ];
+        }
+
+        function initMap() {
+            // Initialize map with proper options
+            map = L.map('map', {
+                center: [37.2, -119.4],
+                zoom: 6,
+                zoomControl: true,
+                attributionControl: true
+            });
+            
+            // Add base layer
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            // Fix map display issues
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 100);
+        }
+
+        function initFilters() {
+            // Add event listeners to all filter controls
+            document.getElementById('providerType').addEventListener('change', renderData);
+            document.getElementById('wholesale').addEventListener('change', renderData);
+            document.getElementById('gwSupply').addEventListener('change', renderData);
+            document.getElementById('sourceType').addEventListener('change', renderData);
+            document.getElementById('project').addEventListener('change', renderData);
+            document.getElementById('purchaseType').addEventListener('change', renderData);
+            
+            // Search and zoom functionality
+            document.getElementById('zoomSelected').addEventListener('click', zoomToSelected);
+            document.getElementById('resetView').addEventListener('click', resetView);
+            
+            // Set up population slider
+            const populationSlider = document.getElementById('population');
+            const populationValue = document.getElementById('populationValue');
+            const maxPopulation = Math.max(...systemsData.map(s => s.population));
+            populationSlider.max = maxPopulation;
+            populationSlider.value = 0;
+            populationValue.textContent = 0;
+            
+            populationSlider.addEventListener('input', function() {
+                populationValue.textContent = this.value;
+                renderData();
+            });
+            
+            // Set up volume slider
+            const volumeSlider = document.getElementById('volume');
+            const volumeValue = document.getElementById('volumeValue');
+            const maxVolume = Math.max(...connectionsData.map(c => c.volume_mgd));
+            volumeSlider.max = maxVolume;
+            volumeSlider.value = 0;
+            volumeValue.textContent = 0;
+            
+            volumeSlider.addEventListener('input', function() {
+                volumeValue.textContent = this.value;
+                renderData();
+            });
+            
+            // Populate filter dropdowns
+            populateFilters();
+        }
+        
+        function populateFilters() {
+            // Populate system search
+            const systemSearch = document.getElementById('searchSystem');
+            systemSearch.innerHTML = '<option value="">Type system name...</option>';
+            systemsData.forEach(system => {
+                const option = document.createElement('option');
+                option.value = system.system_id;
+                option.textContent = system.system_name;
+                systemSearch.appendChild(option);
+            });
+            
+            // Populate source search
+            const sourceSearch = document.getElementById('searchSource');
+            sourceSearch.innerHTML = '<option value="">Type source name...</option>';
+            sourcesData.forEach(source => {
+                const option = document.createElement('option');
+                option.value = source.source_id;
+                option.textContent = source.source_name;
+                sourceSearch.appendChild(option);
+            });
+            
+            // Populate provider types
+            const providerTypes = [...new Set(systemsData.map(s => s.provider_type))].filter(Boolean);
+            const providerTypeSelect = document.getElementById('providerType');
+            providerTypeSelect.innerHTML = '<option value="All">All</option>';
+            providerTypes.forEach(type => {
+                const option = document.createElement('option');
+                option.value = type;
+                option.textContent = type;
+                providerTypeSelect.appendChild(option);
+            });
+            
+            // Populate source types
+            const sourceTypes = [...new Set(sourcesData.map(s => s.source_type))].filter(Boolean);
+            const sourceTypeSelect = document.getElementById('sourceType');
+            sourceTypeSelect.innerHTML = '<option value="All">All</option>';
+            sourceTypes.forEach(type => {
+                const option = document.createElement('option');
+                option.value = type;
+                option.textContent = type;
+                sourceTypeSelect.appendChild(option);
+            });
+            
+            // Populate projects
+            const projects = [...new Set(sourcesData.map(s => s.project))].filter(Boolean);
+            const projectSelect = document.getElementById('project');
+            projectSelect.innerHTML = '<option value="All">All</option>';
+            projects.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project;
+                option.textContent = project;
+                projectSelect.appendChild(option);
+            });
+        }
+
+        function initDataTables() {
+            // Initialize DataTables
+            systemsTable = $('#systemsTable').DataTable({
+                data: [],
+                columns: [
+                    { title: "System ID", data: "system_id" },
+                    { title: "System Name", data: "system_name" },
+                    { title: "PWSID", data: "pwsid" },
+                    { title: "County", data: "county" },
+                    { title: "Population", data: "population", render: $.fn.dataTable.render.number(',', '.', 0) },
+                    { title: "Provider Type", data: "provider_type" },
+                    { title: "Wholesale", data: "is_wholesale" },
+                    { title: "GW Supply", data: "has_gw_supply" }
+                ],
+                pageLength: 5
+            });
+            
+            connectionsTable = $('#connectionsTable').DataTable({
+                data: [],
+                columns: [
+                    { title: "From", data: "from" },
+                    { title: "To", data: "to" },
+                    { title: "Volume (MGD)", data: "volume_mgd" },
+                    { title: "Purchase", data: "purchase", render: function(data) { return data ? "Yes" : "No"; } },
+                    { title: "Avg % Supply", data: "avg_pct_supply", render: function(data) { return data + "%"; } }
+                ],
+                pageLength: 5
+            });
+            
+            sourcesTable = $('#sourcesTable').DataTable({
+                data: [],
+                columns: [
+                    { title: "Source ID", data: "source_id" },
+                    { title: "Source Name", data: "source_name" },
+                    { title: "Source Type", data: "source_type" },
+                    { title: "Project", data: "project" },
+                    { title: "Capacity (MGD)", data: "capacity_mgd" }
+                ],
+                pageLength: 5
+            });
+        }
+
+        function filterData() {
+            // Get filter values
+            const providerType = document.getElementById('providerType').value;
+            const wholesale = document.getElementById('wholesale').value;
+            const gwSupply = document.getElementById('gwSupply').value;
+            const minPopulation = parseInt(document.getElementById('population').value);
+            const sourceType = document.getElementById('sourceType').value;
+            const project = document.getElementById('project').value;
+            const purchaseType = document.getElementById('purchaseType').value;
+            const minVolume = parseInt(document.getElementById('volume').value);
+            
+            // Filter systems
+            let filteredSystems = systemsData.filter(system => {
+                return (providerType === 'All' || system.provider_type === providerType) &&
+                       (wholesale === 'All' || system.is_wholesale === wholesale) &&
+                       (gwSupply === 'All' || system.has_gw_supply === gwSupply) &&
+                       system.population >= minPopulation;
+            });
+            
+            // Filter sources
+            let filteredSources = sourcesData.filter(source => {
+                return (sourceType === 'All' || source.source_type === sourceType) &&
+                       (project === 'All' || source.project === project);
+            });
+            
+            // Filter connections
+            let filteredConnections = connectionsData.filter(connection => {
+                const purchaseFilter = purchaseType === 'All' || 
+                                     (purchaseType === 'Purchased' && connection.purchase) ||
+                                     (purchaseType === 'Direct' && !connection.purchase);
+                
+                return purchaseFilter && connection.volume_mgd >= minVolume;
+            });
+            
+            // Apply linked filtering
+            filteredConnections = filteredConnections.filter(conn => 
+                filteredSystems.some(sys => sys.system_id === conn.to) &&
+                filteredSources.some(src => src.source_id === conn.from)
+            );
+            
+            filteredSystems = filteredSystems.filter(sys => 
+                filteredConnections.some(conn => conn.to === sys.system_id)
+            );
+            
+            filteredSources = filteredSources.filter(src => 
+                filteredConnections.some(conn => conn.from === src.source_id)
+            );
+            
+            return {
+                systems: filteredSystems,
+                sources: filteredSources,
+                connections: filteredConnections
+            };
+        }
+
+        function renderData() {
+            const filteredData = filterData();
+            
+            // Clear existing map elements
+            clearMap();
+            
+            // Update data tables
+            updateDataTables(filteredData);
+            
+            // Add markers and connections to map
+            addToMap(filteredData);
+            
+            // Fix map display issues
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 100);
+        }
+
+        function clearMap() {
+            // Remove all markers, lines, and decorators
+            currentMarkers.forEach(marker => map.removeLayer(marker));
+            currentLines.forEach(line => map.removeLayer(line));
+            currentDecorators.forEach(decorator => map.removeLayer(decorator));
+            currentMarkers = [];
+            currentLines = [];
+            currentDecorators = [];
+        }
+
+        function updateDataTables(data) {
+            // Update systems table
+            systemsTable.clear();
+            systemsTable.rows.add(data.systems);
+            systemsTable.draw();
+            
+            // Update connections table
+            connectionsTable.clear();
+            connectionsTable.rows.add(data.connections);
+            connectionsTable.draw();
+            
+            // Update sources table
+            sourcesTable.clear();
+            sourcesTable.rows.add(data.sources);
+            sourcesTable.draw();
+        }
+
+        function addToMap(data) {
+            // Add sources to map
+            data.sources.forEach(source => {
+                const marker = L.circleMarker([source.source_lat, source.source_lon], {
+                    radius: 8,
+                    color: 'darkred',
+                    fillColor: 'red',
+                    fillOpacity: 0.9
+                }).addTo(map);
+                
+                marker.bindPopup(`
+                    <b>Source:</b> ${source.source_name}<br>
+                    <b>Type:</b> ${source.source_type}<br>
+                    <b>Project:</b> ${source.project}<br>
+                    <b>Capacity:</b> ${source.capacity_mgd} MGD
+                `);
+                
+                currentMarkers.push(marker);
+            });
+            
+            // Add systems to map
+            data.systems.forEach(system => {
+                const radius = Math.sqrt(system.population) / 80;
+                
+                const marker = L.circleMarker([system.lat, system.lon], {
+                    radius: radius,
+                    color: 'darkblue',
+                    fillColor: 'blue',
+                    fillOpacity: 0.7
+                }).addTo(map);
+                
+                marker.bindPopup(`
+                    <b>System:</b> ${system.system_name} (${system.pwsid})<br>
+                    <b>County:</b> ${system.county}<br>
+                    <b>Population:</b> ${system.population.toLocaleString()}<br>
+                    <b>Provider Type:</b> ${system.provider_type}
+                `);
+                
+                currentMarkers.push(marker);
+            });
+            
+            // Add connections to map with arrowheads
+            data.connections.forEach(connection => {
+                const fromSource = data.sources.find(s => s.source_id === connection.from);
+                const toSystem = data.systems.find(s => s.system_id === connection.to);
+                
+                if (fromSource && toSystem) {
+                    const line = L.polyline([
+                        [fromSource.source_lat, fromSource.source_lon],
+                        [toSystem.lat, toSystem.lon]
+                    ], {
+                        color: '#0066CC',
+                        weight: 3
+                    }).addTo(map);
+                    
+                    line.bindPopup(`
+                        <b>From:</b> ${connection.from}<br>
+                        <b>To:</b> ${connection.to}<br>
+                        <b>Volume:</b> ${connection.volume_mgd} MGD<br>
+                        <b>Purchase:</b> ${connection.purchase ? 'Yes' : 'No'}<br>
+                        <b>Avg % Supply:</b> ${connection.avg_pct_supply.toFixed(1)}%
+                    `);
+                    
+                    // Add arrowhead to the line
+                    const decorator = L.polylineDecorator(line, {
+                        patterns: [
+                            {
+                                offset: '100%',
+                                repeat: 0,
+                                symbol: L.Symbol.arrowHead({
+                                    pixelSize: 15,
+                                    polygon: false,
+                                    pathOptions: {
+                                        stroke: true,
+                                        color: '#0066CC',
+                                        weight: 3,
+                                        opacity: 1
+                                    }
+                                })
+                            }
+                        ]
+                    }).addTo(map);
+                    
+                    currentLines.push(line);
+                    currentDecorators.push(decorator);
+                }
+            });
+        }
+
+        function zoomToSelected() {
+            const systemId = document.getElementById('searchSystem').value;
+            const sourceId = document.getElementById('searchSource').value;
+            
+            if (systemId) {
+                const system = systemsData.find(s => s.system_id === systemId);
+                if (system) {
+                    map.flyTo([system.lat, system.lon], 10);
+                }
+            } else if (sourceId) {
+                const source = sourcesData.find(s => s.source_id === sourceId);
+                if (source) {
+                    map.flyTo([source.source_lat, source.source_lon], 10);
+                }
+            }
+        }
+
+        function resetView() {
+            document.getElementById('searchSystem').value = '';
+            document.getElementById('searchSource').value = '';
+            document.getElementById('providerType').value = 'All';
+            document.getElementById('wholesale').value = 'All';
+            document.getElementById('gwSupply').value = 'All';
+            document.getElementById('population').value = 0;
+            document.getElementById('populationValue').textContent = '0';
+            document.getElementById('sourceType').value = 'All';
+            document.getElementById('project').value = 'All';
+            document.getElementById('purchaseType').value = 'All';
+            document.getElementById('volume').value = 0;
+            document.getElementById('volumeValue').textContent = '0';
+            
+            map.setView([37.2, -119.4], 6);
+            renderData();
+        }
+    </script>
+</body>
+</html>
