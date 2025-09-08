@@ -1,0 +1,137 @@
+
+# Load packages
+```{r}
+suppressPackageStartupMessages({
+  suppressWarnings({
+    library(sf)
+    library(tidyverse)
+    library(DT)
+    library(here)
+    })})
+```
+
+
+Set settings and universal variables
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = here())
+
+crs = 4326
+
+set.seed(123)
+```
+
+# Create fake datasets
+
+## Nodes
+
+### PW Systems
+```{r}
+systems <- data.frame(
+  system_name = c("San Francisco PWS", "Los Angeles PWS", "San Diego PWS", 
+                  "Sacramento PWS", "Fresno PWS", "Oakland PWS",
+                  "San Jose PWS", "Long Beach PWS", "Bakersfield PWS", "Santa Cruz PWS"),
+  pwsid = c("CA1234567", "CA2345678", "CA3456789", "CA4567890", "CA5678901",
+            "CA6789012", "CA7890123", "CA8901234", "CA9012345", "CA0123456"),
+  county = factor(c("San Francisco", "Los Angeles", "San Diego", "Sacramento", "Fresno",
+                    "Alameda", "Santa Clara", "Los Angeles", "Kern", "Santa Cruz")),
+  population = round(runif(10, 5000, 500000)),
+  pop_bin = factor(sample(c("Small", "Large"), 10, replace = TRUE)),
+  provider_type = factor(sample(c("Retail", "Wholesale", "Both"), 10, replace = TRUE),
+                         levels = c("Retail", "Wholesale", "Both")),
+  is_wholesale = factor(sample(c("Y", "N"), 10, replace = TRUE, prob = c(0.3, 0.7))),
+  has_gw_supply = factor(sample(c("Yes", "No"), 10, replace = TRUE, prob = c(0.8, 0.2))),
+  gw_mcl_compliant = factor(sample(c("Yes", "No", "NA"), 10, replace = TRUE, 
+                                   prob = c(0.6, 0.2, 0.2))),
+  lat = runif(10, 34.0, 39.5),
+  lon = runif(10, -122.5, -117.0))
+```
+
+### Sources
+```{r}
+sources <- data.frame(
+  source_id = c("src_A", "src_B", "src_C", "src_D", "src_E", "src_F", "src_G"),
+  source_name = c("Hetch Hetchy Reservoir", "Owens River", "Colorado River Aqueduct", 
+                  "Sacramento River", "Feather River", "Local Groundwater", "Delta Intake"),
+  source_type = factor(c("Reservoir", "River", "Aqueduct", "River", "River", 
+                         "Groundwater", "River Intake"),
+                       levels = c("Reservoir", "River", "Aqueduct", "Groundwater", "River Intake", "Purchased")),
+  source_lat = c(37.9468, 36.5436, 33.7175, 38.5976, 39.6543, 37.2345, 38.0456),
+  source_lon = c(-119.7866, -118.2732, -114.7222, -121.1927, -121.3456, -121.1234, -121.7890),
+  project = factor(c("SWP", "LADWP", "MWD", "CVP", "CVP", "Local", "SWP"),
+                   levels = c("SWP", "CVP", "LADWP", "MWD", "Local")))
+```
+
+## Links
+```{r}
+connections <- do.call(rbind, lapply(systems$pwsid, function(pwsid) {
+  num_connections <- sample(1:3, 1)
+  
+  # Generate pct_supply first
+  pct_supply <- round(sample(c(NA, runif(num_connections, 10, 100)), num_connections, replace = TRUE))
+  
+  # Generate years based on pct_supply
+  most_recent_year <- ifelse(is.na(pct_supply), NA, round(runif(num_connections, 2015, 2024)))
+  
+  data.frame(
+    source_id = sample(sources$source_id, num_connections, replace = TRUE),
+    pwsid = pwsid,
+    purchased = sample(c("Yes", "No"), num_connections, replace = TRUE, prob = c(0.4, 0.6)),
+    volume_mgd = round(runif(num_connections, 10, 200)),
+    pct_of_supply = pct_supply,
+    most_recent_year = most_recent_year)}))
+```
+
+Now we need to convert these links into spatial data (lines)
+```{r}
+create_connection_lines <- function(connections_df, sources_df, systems_df) {
+  lines_list <- list()
+  
+  for (i in 1:nrow(connections_df)) {
+    source_coords <- sources_df[sources_df$source_id == connections_df$from[i], c("source_lon", "source_lat")]
+    system_coords <- systems_df[systems_df$system_id == connections_df$to[i], c("lon", "lat")]
+    
+    if (nrow(source_coords) > 0 && nrow(system_coords) > 0) {
+      line <- st_linestring(rbind(
+        as.numeric(c(source_coords$source_lon, source_coords$source_lat)),
+        as.numeric(c(system_coords$lon, system_coords$lat))))
+      lines_list[[i]] <- line}}
+  
+  valid_lines <- !sapply(lines_list, is.null)
+  if (sum(valid_lines) > 0) {
+    st_sf(
+      connections_df[valid_lines, ],
+      geometry = st_sfc(lines_list[valid_lines], crs = 4326)
+    )} else {NULL}}
+```
+
+```{r}
+systems_served_by_source = connections%>%
+  group_by(source_id)%>%
+  reframe(num_systems_served = n())
+
+sw_sources_by_system = connections%>%
+  group_by(pwsid)%>%
+  reframe(num_sw_sources = n())
+
+sources = sources%>%
+  left_join(., systems_served_by_source, by = "source_id")%>%
+  mutate(num_systems_served = replace_na(num_systems_served, 0))
+
+systems = systems%>%
+  left_join(., sw_sources_by_system, by = "pwsid")%>%
+  mutate(num_sw_sources = replace_na(num_sw_sources, 0))
+```
+
+
+# Export
+```{r}
+#st_write(st_as_sf(systems, coords = c("lon", "lat"), crs = crs), "Data/Interactive map/20250903_fake_systems.shp", delete_dsn = T)
+write.csv(systems, "Data/20250908_fake_systems.csv", row.names = F)
+
+
+#st_write(st_as_sf(sources, coords = c("source_lon", "source_lat"), crs = crs), "Data/Interactive map/20250903_fake_sources.shp", delete_dsn = T)
+write.csv(sources, "Data/20250908_fake_sources.csv", row.names = F)
+
+#st_write(create_connection_lines(connections, sources, systems), "Data/Interactive map/20250903_fake_links.shp", delete_dsn = T)
+write.csv(connections, "Data/20250908_fake_links.csv", row.names = F)
+```
