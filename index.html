@@ -79,12 +79,6 @@
             font-weight: 700;
             text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
         }
-        .form-range::-webkit-slider-thumb {
-            background: #007bff;
-        }
-        .form-range::-moz-range-thumb {
-            background: #007bff;
-        }
         .loading {
             display: flex;
             justify-content: center;
@@ -110,17 +104,6 @@
             margin-right: 5px;
             border-radius: 50%;
         }
-        .instructions {
-            background-color: #f8f9fa;
-            border-left: 4px solid #007bff;
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-        }
-        .instructions h4 {
-            margin-top: 0;
-            color: #007bff;
-        }
         /* Arrow legend styling */
         .legend-arrow {
             display: inline-block;
@@ -129,7 +112,6 @@
             background: #0066CC;
             position: relative;
             margin-right: 5px;
-            border-radius: 0;
         }
         .legend-arrow::after {
             content: '';
@@ -151,8 +133,6 @@
             <div class="col-md-3 col-lg-3 sidebar">
                 <div class="p-3">
                     <h2 class="text-center mb-4">California Water Systems</h2>
-                    
-                 
                     
                     <!-- Search functionality -->
                     <div class="card mb-3">
@@ -191,15 +171,12 @@
                                     <option value="All">All</option>
                                 </select>
                             </div>
-                            
                             <div class="mb-2">
                                 <label for="population" class="form-label">System Size:</label>
                                 <select id="population" class="form-select">
                                     <option value="All">All</option>
                                 </select>
                             </div>
-                            
-                  
                         </div>
                     </div>
                     
@@ -317,7 +294,6 @@
         });
 
         async function initializeApp() {
-            // Load data
             try {
                 await loadCSVData();
             } catch (error) {
@@ -326,35 +302,19 @@
                 await loadSampleData();
             }
             
-            // Initialize map
             initMap();
-            
-            // Initialize filters
             initFilters();
-            
-            // Initialize data tables
             initDataTables();
-            
-            // Render initial data
             renderData();
             
-            // Hide loading and show content
             document.getElementById('loading').style.display = 'none';
             document.getElementById('content').style.display = 'block';
         }
 
-        // Load CSV data
         async function loadCSVData() {
-            // Load systems data
             systemsData = await loadCSV('Data/20250908_fake_systems.csv');
-            
-            // Load sources data
             sourcesData = await loadCSV('Data/20250908_fake_sources.csv');
-            
-            // Load connections data
             connectionsData = await loadCSV('Data/20250908_fake_links.csv');
-            
-            // Process data (convert string numbers to actual numbers)
             processData();
         }
 
@@ -375,7 +335,6 @@
         }
 
         function processData() {
-            // Convert numeric fields if needed
             systemsData.forEach(system => {
                 system.population = Number(system.population) || 0;
                 system.lon = Number(system.lon) || 0;
@@ -383,7 +342,6 @@
             });
             
             sourcesData.forEach(source => {
-                //source.capacity_mgd = Number(source.capacity_mgd) || 0;
                 source.source_lon = Number(source.source_lon) || 0;
                 source.source_lat = Number(source.source_lat) || 0;
             });
@@ -391,7 +349,6 @@
             connectionsData.forEach(connection => {
                 connection.volume_mgd = Number(connection.volume_mgd) || 0;
                 connection.avg_pct_supply = Number(connection.avg_pct_supply) || 0;
-                // Convert purchase to boolean if it's stored as string
                 if (typeof connection.purchase === 'string') {
                     connection.purchase = connection.purchase.toLowerCase() === 'true' || connection.purchase === '1';
                 }
@@ -399,70 +356,31 @@
         }
 
         function initMap() {
-            // Initialize map with proper options
             map = L.map('map', {
                 center: [37.2, -119.4],
-                zoom: 6,
-                zoomControl: true,
-                attributionControl: true
+                zoom: 6
             });
             
-            // Add base layer
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             }).addTo(map);
             
-            // Fix map display issues
-            setTimeout(() => {
-                map.invalidateSize();
-            }, 100);
+            setTimeout(() => { map.invalidateSize(); }, 100);
         }
 
         function initFilters() {
-            // Add event listeners to all filter controls
-            document.getElementById('providerType').addEventListener('change', renderData);
-            document.getElementById('wholesale').addEventListener('change', renderData);
             document.getElementById('gwSupply').addEventListener('change', renderData);
             document.getElementById('sourceType').addEventListener('change', renderData);
             document.getElementById('project').addEventListener('change', renderData);
             document.getElementById('purchaseType').addEventListener('change', renderData);
             
-            // Search and zoom functionality
             document.getElementById('zoomSelected').addEventListener('click', zoomToSelected);
             document.getElementById('resetView').addEventListener('click', resetView);
             
-            // Set up population slider
-            const populationSlider = document.getElementById('population');
-            const populationValue = document.getElementById('populationValue');
-            const maxPopulation = Math.max(...systemsData.map(s => s.population));
-            populationSlider.max = maxPopulation;
-            populationSlider.value = 0;
-            populationValue.textContent = 0;
-            
-            populationSlider.addEventListener('input', function() {
-                populationValue.textContent = this.value;
-                renderData();
-            });
-            
-            // Set up volume slider
-            const volumeSlider = document.getElementById('volume');
-            const volumeValue = document.getElementById('volumeValue');
-            const maxVolume = Math.max(...connectionsData.map(c => c.volume_mgd));
-            volumeSlider.max = maxVolume;
-            volumeSlider.value = 0;
-            volumeValue.textContent = 0;
-            
-            volumeSlider.addEventListener('input', function() {
-                volumeValue.textContent = this.value;
-                renderData();
-            });
-            
-            // Populate filter dropdowns
             populateFilters();
         }
         
         function populateFilters() {
-            // Populate system search
             const systemSearch = document.getElementById('searchSystem');
             systemSearch.innerHTML = '<option value="">Type system name...</option>';
             systemsData.forEach(system => {
@@ -472,7 +390,6 @@
                 systemSearch.appendChild(option);
             });
             
-            // Populate source search
             const sourceSearch = document.getElementById('searchSource');
             sourceSearch.innerHTML = '<option value="">Type source name...</option>';
             sourcesData.forEach(source => {
@@ -482,18 +399,6 @@
                 sourceSearch.appendChild(option);
             });
             
-            // Populate provider types
-            const providerTypes = [...new Set(systemsData.map(s => s.provider_type))].filter(Boolean);
-            const providerTypeSelect = document.getElementById('providerType');
-            providerTypeSelect.innerHTML = '<option value="All">All</option>';
-            providerTypes.forEach(type => {
-                const option = document.createElement('option');
-                option.value = type;
-                option.textContent = type;
-                providerTypeSelect.appendChild(option);
-            });
-            
-            // Populate source types
             const sourceTypes = [...new Set(sourcesData.map(s => s.source_type))].filter(Boolean);
             const sourceTypeSelect = document.getElementById('sourceType');
             sourceTypeSelect.innerHTML = '<option value="All">All</option>';
@@ -504,7 +409,6 @@
                 sourceTypeSelect.appendChild(option);
             });
             
-            // Populate projects
             const projects = [...new Set(sourcesData.map(s => s.project))].filter(Boolean);
             const projectSelect = document.getElementById('project');
             projectSelect.innerHTML = '<option value="All">All</option>';
@@ -517,18 +421,18 @@
         }
 
         function initDataTables() {
-            // Initialize DataTables
             systemsTable = $('#systemsTable').DataTable({
                 data: [],
                 columns: [
-                    { title: "System ID", data: "system_id" },
                     { title: "System Name", data: "system_name" },
                     { title: "PWSID", data: "pwsid" },
                     { title: "County", data: "county" },
                     { title: "Population", data: "population", render: $.fn.dataTable.render.number(',', '.', 0) },
                     { title: "Provider Type", data: "provider_type" },
                     { title: "Wholesale", data: "is_wholesale" },
-                    { title: "GW Supply", data: "has_gw_supply" }
+                    { title: "GW Supply", data: "has_gw_supply" },
+                    { title: "GW is DWS-Compliant", data: "gw_mcl_compliant" },
+                    { title: "Number of SW Sources", data: "num_sw_sources" }
                 ],
                 pageLength: 5
             });
@@ -536,11 +440,12 @@
             connectionsTable = $('#connectionsTable').DataTable({
                 data: [],
                 columns: [
-                    { title: "From", data: "from" },
-                    { title: "To", data: "to" },
+                    { title: "Source ID", data: "source_id" },
+                    { title: "PWSID", data: "pwsid" },
                     { title: "Volume (MGD)", data: "volume_mgd" },
-                    { title: "Purchase", data: "purchase", render: function(data) { return data ? "Yes" : "No"; } },
-                    { title: "Avg % Supply", data: "avg_pct_supply", render: function(data) { return data + "%"; } }
+                    { title: "Purchased", data: "purchased" },
+                    { title: "% of Supply", data: "pct_of_supply", render: function(data) { return data + "%"; } },
+                    { title: "Most Recent Year of Data", data: "most_recent_year" }
                 ],
                 pageLength: 5
             });
@@ -552,47 +457,34 @@
                     { title: "Source Name", data: "source_name" },
                     { title: "Source Type", data: "source_type" },
                     { title: "Project", data: "project" },
-                    { title: "Capacity (MGD)", data: "capacity_mgd" }
+                    { title: "Number of Systems Served", data: "num_systems_served" }
                 ],
                 pageLength: 5
             });
         }
 
         function filterData() {
-            // Get filter values
-            const providerType = document.getElementById('providerType').value;
-            const wholesale = document.getElementById('wholesale').value;
             const gwSupply = document.getElementById('gwSupply').value;
-            const minPopulation = parseInt(document.getElementById('population').value);
             const sourceType = document.getElementById('sourceType').value;
             const project = document.getElementById('project').value;
             const purchaseType = document.getElementById('purchaseType').value;
-            const minVolume = parseInt(document.getElementById('volume').value);
             
-            // Filter systems
             let filteredSystems = systemsData.filter(system => {
-                return (providerType === 'All' || system.provider_type === providerType) &&
-                       (wholesale === 'All' || system.is_wholesale === wholesale) &&
-                       (gwSupply === 'All' || system.has_gw_supply === gwSupply) &&
-                       system.population >= minPopulation;
+                return (gwSupply === 'All' || system.has_gw_supply === gwSupply);
             });
             
-            // Filter sources
             let filteredSources = sourcesData.filter(source => {
                 return (sourceType === 'All' || source.source_type === sourceType) &&
                        (project === 'All' || source.project === project);
             });
             
-            // Filter connections
             let filteredConnections = connectionsData.filter(connection => {
                 const purchaseFilter = purchaseType === 'All' || 
-                                     (purchaseType === 'Purchased' && connection.purchase) ||
-                                     (purchaseType === 'Direct' && !connection.purchase);
-                
-                return purchaseFilter && connection.volume_mgd >= minVolume;
+                    (purchaseType === 'Purchased' && connection.purchase) ||
+                    (purchaseType === 'Direct' && !connection.purchase);
+                return purchaseFilter;
             });
             
-            // Apply linked filtering
             filteredConnections = filteredConnections.filter(conn => 
                 filteredSystems.some(sys => sys.system_id === conn.to) &&
                 filteredSources.some(src => src.source_id === conn.from)
@@ -606,33 +498,18 @@
                 filteredConnections.some(conn => conn.from === src.source_id)
             );
             
-            return {
-                systems: filteredSystems,
-                sources: filteredSources,
-                connections: filteredConnections
-            };
+            return { systems: filteredSystems, sources: filteredSources, connections: filteredConnections };
         }
 
         function renderData() {
             const filteredData = filterData();
-            
-            // Clear existing map elements
             clearMap();
-            
-            // Update data tables
             updateDataTables(filteredData);
-            
-            // Add markers and connections to map
             addToMap(filteredData);
-            
-            // Fix map display issues
-            setTimeout(() => {
-                map.invalidateSize();
-            }, 100);
+            setTimeout(() => { map.invalidateSize(); }, 100);
         }
 
         function clearMap() {
-            // Remove all markers, lines, and decorators
             currentMarkers.forEach(marker => map.removeLayer(marker));
             currentLines.forEach(line => map.removeLayer(line));
             currentDecorators.forEach(decorator => map.removeLayer(decorator));
@@ -642,24 +519,20 @@
         }
 
         function updateDataTables(data) {
-            // Update systems table
             systemsTable.clear();
             systemsTable.rows.add(data.systems);
             systemsTable.draw();
             
-            // Update connections table
             connectionsTable.clear();
             connectionsTable.rows.add(data.connections);
             connectionsTable.draw();
             
-            // Update sources table
             sourcesTable.clear();
             sourcesTable.rows.add(data.sources);
             sourcesTable.draw();
         }
 
         function addToMap(data) {
-            // Add sources to map
             data.sources.forEach(source => {
                 const marker = L.circleMarker([source.source_lat, source.source_lon], {
                     radius: 8,
@@ -672,16 +545,14 @@
                     <b>Source Name:</b> ${source.source_name}<br>
                     <b>Source Type:</b> ${source.source_type}<br>
                     <b>Project:</b> ${source.project}<br>
-                    <b># of Systems Served:</b> ${source.project}<br>
+                    <b># of Systems Served:</b> ${source.num_systems_served}<br>
                 `);
                 
                 currentMarkers.push(marker);
             });
             
-            // Add systems to map
             data.systems.forEach(system => {
                 const radius = Math.sqrt(system.population) / 80;
-                
                 const marker = L.circleMarker([system.lat, system.lon], {
                     radius: radius,
                     color: 'darkblue',
@@ -699,7 +570,6 @@
                 currentMarkers.push(marker);
             });
             
-            // Add connections to map with arrowheads
             data.connections.forEach(connection => {
                 const fromSource = data.sources.find(s => s.source_id === connection.from);
                 const toSystem = data.systems.find(s => s.system_id === connection.to);
@@ -721,7 +591,6 @@
                         <b>Avg % Supply:</b> ${connection.avg_pct_supply.toFixed(1)}%
                     `);
                     
-                    // Add arrowhead to the line
                     const decorator = L.polylineDecorator(line, {
                         patterns: [
                             {
@@ -753,30 +622,21 @@
             
             if (systemId) {
                 const system = systemsData.find(s => s.system_id === systemId);
-                if (system) {
-                    map.flyTo([system.lat, system.lon], 10);
-                }
+                if (system) map.flyTo([system.lat, system.lon], 10);
             } else if (sourceId) {
                 const source = sourcesData.find(s => s.source_id === sourceId);
-                if (source) {
-                    map.flyTo([source.source_lat, source.source_lon], 10);
-                }
+                if (source) map.flyTo([source.source_lat, source.source_lon], 10);
             }
         }
 
         function resetView() {
             document.getElementById('searchSystem').value = '';
             document.getElementById('searchSource').value = '';
-            document.getElementById('providerType').value = 'All';
-            document.getElementById('wholesale').value = 'All';
             document.getElementById('gwSupply').value = 'All';
-            document.getElementById('population').value = 0;
-            document.getElementById('populationValue').textContent = '0';
+            document.getElementById('population').value = 'All';
             document.getElementById('sourceType').value = 'All';
             document.getElementById('project').value = 'All';
             document.getElementById('purchaseType').value = 'All';
-            document.getElementById('volume').value = 0;
-            document.getElementById('volumeValue').textContent = '0';
             
             map.setView([37.2, -119.4], 6);
             renderData();
