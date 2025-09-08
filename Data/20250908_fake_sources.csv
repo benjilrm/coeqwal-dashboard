@@ -1,0 +1,8 @@
+"source_id","source_name","source_type","source_lat","source_lon","project","num_systems_served"
+"src_A","Hetch Hetchy Reservoir","Reservoir",37.9468,-119.7866,"SWP",1
+"src_B","Owens River","River",36.5436,-118.2732,"LADWP",1
+"src_C","Colorado River Aqueduct","Aqueduct",33.7175,-114.7222,"MWD",3
+"src_D","Sacramento River","River",38.5976,-121.1927,"CVP",4
+"src_E","Feather River","River",39.6543,-121.3456,"CVP",4
+"src_F","Local Groundwater","Groundwater",37.2345,-121.1234,"Local",6
+"src_G","Delta Intake","River Intake",38.0456,-121.789,"SWP",2

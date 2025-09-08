@@ -186,32 +186,25 @@
                         </div>
                         <div class="card-body">
                             <div class="mb-2">
-                                <label for="providerType" class="form-label">Provider Type:</label>
-                                <select id="providerType" class="form-select">
-                                    <option value="All">All</option>
-                                </select>
-                            </div>
-                            <div class="mb-2">
-                                <label for="wholesale" class="form-label">Wholesale:</label>
-                                <select id="wholesale" class="form-select">
-                                    <option value="All">All</option>
-                                    <option value="Y">Y</option>
-                                    <option value="N">N</option>
-                                </select>
-                            </div>
-                            <div class="mb-2">
                                 <label for="gwSupply" class="form-label">GW Supply:</label>
                                 <select id="gwSupply" class="form-select">
                                     <option value="All">All</option>
-                                    <option value="Y">Y</option>
-                                    <option value="N">N</option>
+                                    <option value="Yes">Yes</option>
+                                    <option value="No">No</option>
                                 </select>
                             </div>
+                            
+                            
                             <div class="mb-2">
-                                <label for="population" class="form-label">Min Population:</label>
-                                <input type="range" class="form-range" id="population" min="0" step="1000">
-                                <span id="populationValue">0</span>
+                                <label for="population" class="form-label">GW Supply:</label>
+                                <select id="population" class="form-select">
+                                    <option value="All">All</option>
+                                    <option value="Small">Yes</option>
+                                    <option value="Large">No</option>
+                                </select>
                             </div>
+                            
+                  
                         </div>
                     </div>
                     
@@ -365,13 +358,13 @@
         // Load CSV data
         async function loadCSVData() {
             // Load systems data
-            systemsData = await loadCSV('Data/20250903_fake_systems.csv');
+            systemsData = await loadCSV('Data/20250908_fake_systems.csv');
             
             // Load sources data
-            sourcesData = await loadCSV('Data/20250903_fake_sources.csv');
+            sourcesData = await loadCSV('Data/20250908_fake_sources.csv');
             
             // Load connections data
-            connectionsData = await loadCSV('Data/20250903_fake_links.csv');
+            connectionsData = await loadCSV('Data/20250908_fake_links.csv');
             
             // Process data (convert string numbers to actual numbers)
             processData();
@@ -402,7 +395,7 @@
             });
             
             sourcesData.forEach(source => {
-                source.capacity_mgd = Number(source.capacity_mgd) || 0;
+                //source.capacity_mgd = Number(source.capacity_mgd) || 0;
                 source.source_lon = Number(source.source_lon) || 0;
                 source.source_lat = Number(source.source_lat) || 0;
             });
@@ -415,36 +408,6 @@
                     connection.purchase = connection.purchase.toLowerCase() === 'true' || connection.purchase === '1';
                 }
             });
-        }
-
-        // Load sample data (if CSV loading fails)
-        async function loadSampleData() {
-            // Sample data - replace with your actual data loading from CSV files
-            systemsData = [
-                {system_id: "S1", system_name: "Central Valley Water", pwsid: "CA123", county: "Fresno", population: 50000, provider_type: "Municipal", is_wholesale: "Y", has_gw_supply: "Y", lon: -119.5, lat: 36.5},
-                {system_id: "S2", system_name: "Coastal Water District", pwsid: "CA124", county: "Monterey", population: 75000, provider_type: "District", is_wholesale: "N", has_gw_supply: "Y", lon: -121.5, lat: 36.8},
-                {system_id: "S3", system_name: "Mountain Springs Water", pwsid: "CA125", county: "Tuolumne", population: 12000, provider_type: "Private", is_wholesale: "N", has_gw_supply: "N", lon: -120.0, lat: 38.0},
-                {system_id: "S4", system_name: "Bay Area Water Co.", pwsid: "CA126", county: "Alameda", population: 150000, provider_type: "Municipal", is_wholesale: "Y", has_gw_supply: "Y", lon: -122.0, lat: 37.8},
-                {system_id: "S5", system_name: "Delta Water Supply", pwsid: "CA127", county: "Sacramento", population: 80000, provider_type: "District", is_wholesale: "Y", has_gw_supply: "N", lon: -121.3, lat: 38.5}
-            ];
-            
-            sourcesData = [
-                {source_id: "SRC1", source_name: "Sierra Snowmelt", source_type: "Surface", project: "State Project", capacity_mgd: 250, source_lon: -119.0, source_lat: 37.5},
-                {source_id: "SRC2", source_name: "Coastal Aquifer", source_type: "Groundwater", project: "Local", capacity_mgd: 100, source_lon: -121.8, source_lat: 36.6},
-                {source_id: "SRC3", source_name: "Feather River", source_type: "Surface", project: "State Project", capacity_mgd: 300, source_lon: -121.0, source_lat: 39.5},
-                {source_id: "SRC4", source_name: "San Joaquin Aquifer", source_type: "Groundwater", project: "Local", capacity_mgd: 150, source_lon: -120.5, source_lat: 37.0},
-                {source_id: "SRC5", source_name: "Bay Desalination", source_type: "Desalination", project: "Regional", capacity_mgd: 50, source_lon: -122.4, source_lat: 37.7}
-            ];
-            
-            connectionsData = [
-                {from: "SRC1", to: "S1", volume_mgd: 120, purchase: true, avg_pct_supply: 80},
-                {from: "SRC1", to: "S4", volume_mgd: 90, purchase: true, avg_pct_supply: 60},
-                {from: "SRC2", to: "S2", volume_mgd: 75, purchase: false, avg_pct_supply: 75},
-                {from: "SRC3", to: "S5", volume_mgd: 110, purchase: true, avg_pct_supply: 70},
-                {from: "SRC4", to: "S1", volume_mgd: 60, purchase: false, avg_pct_supply: 40},
-                {from: "SRC4", to: "S3", volume_mgd: 25, purchase: false, avg_pct_supply: 85},
-                {from: "SRC5", to: "S4", volume_mgd: 40, purchase: true, avg_pct_supply: 30}
-            ];
         }
 
         function initMap() {
@@ -718,10 +681,10 @@
                 }).addTo(map);
                 
                 marker.bindPopup(`
-                    <b>Source:</b> ${source.source_name}<br>
-                    <b>Type:</b> ${source.source_type}<br>
+                    <b>Source Name:</b> ${source.source_name}<br>
+                    <b>Source Type:</b> ${source.source_type}<br>
                     <b>Project:</b> ${source.project}<br>
-                    <b>Capacity:</b> ${source.capacity_mgd} MGD
+                    <b># of Systems Served:</b> ${source.project}<br>
                 `);
                 
                 currentMarkers.push(marker);
