@@ -668,9 +668,10 @@ function renderAll(){
   const d = filterAll();
 
   // Update tables (with original objects so columns reflect your latest schema)
-  updateDataTable(systemsTable, filtered.systems);
-  updateDataTable(sourcesTable, filtered.sources);
-  updateDataTable(connectionsTable, filtered.connections);
+  updateDataTable(systemsTable, filtered.systems, 'systemsTable');
+  updateDataTable(sourcesTable, filtered.sources, 'sourcesTable');
+  updateDataTable(connectionsTable, filtered.connections, 'connectionsTable');
+
 
   // Map
   clearMap();
@@ -734,15 +735,15 @@ function initTables(){
   });
 }
 
-function updateDataTable(dt, rows){
-  // Build columns dynamically from keys
+function updateDataTable(dt, rows, tableId){
   const cols = buildColumnsFromRows(rows);
-  dt.clear();
-  dt.columns().every(function(){ /* no-op to avoid warning when reconfiguring */ });
-  dt.destroy(); // rebuild to apply new columns when schema changes
 
-  // Recreate with new columns
-  const tableId = dt.table().node().id;
+  // Destroy safely if already initialized
+  if ($.fn.DataTable.isDataTable('#'+tableId)) {
+    $('#'+tableId).DataTable().destroy();
+  }
+
+  // Recreate with new data/columns
   const newDT = $('#'+tableId).DataTable({
     data: rows,
     columns: cols,
@@ -751,11 +752,12 @@ function updateDataTable(dt, rows){
     deferRender: true
   });
 
-  // Replace reference
+  // Update reference
   if (tableId === 'systemsTable') systemsTable = newDT;
-  else if (tableId === 'connectionsTable') connectionsTable = newDT;
-  else if (tableId === 'sourcesTable') sourcesTable = newDT;
+  if (tableId === 'connectionsTable') connectionsTable = newDT;
+  if (tableId === 'sourcesTable') sourcesTable = newDT;
 }
+
 
 function buildColumnsFromRows(rows){
   const keys = Array.from(rows.reduce((set, r)=>{ Object.keys(r||{}).forEach(k=>set.add(k)); return set; }, new Set()));
