@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>California Water Systems Network Dashboard</title>
+    <title>California Drinking Water Systems Network Dashboard</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
@@ -403,13 +403,13 @@
         // Load CSV data
         async function loadCSVData() {
             // Load systems data
-            systemsData = await loadCSV('20250908_fake_systems.csv');
+            systemsData = await loadCSV('Data/20250908_fake_systems.csv');
             
             // Load sources data
-            sourcesData = await loadCSV('20250908_fake_sources.csv');
+            sourcesData = await loadCSV('Data/20250908_fake_sources.csv');
             
             // Load connections data
-            connectionsData = await loadCSV('20250908_fake_links.csv');
+            connectionsData = await loadCSV('Data/20250908_fake_links.csv');
             
             // Process data (convert string numbers to actual numbers)
             processData();
@@ -432,73 +432,31 @@
         }
 
         function processData() {
-            // Convert numeric fields if needed
-            systemsData.forEach(system => {
+            // Convert numeric fields if needed and filter out empty rows
+            systemsData = systemsData.filter(system => 
+                system && system.system_name && system.pwsid
+            ).map(system => {
                 system.population = Number(system.population) || 0;
                 system.lon = Number(system.lon) || 0;
                 system.lat = Number(system.lat) || 0;
+                return system;
             });
             
-            sourcesData.forEach(source => {
+            sourcesData = sourcesData.filter(source => 
+                source && source.source_name && source.source_id
+            ).map(source => {
                 source.source_lon = Number(source.source_lon) || 0;
                 source.source_lat = Number(source.source_lat) || 0;
+                return source;
             });
             
-            connectionsData.forEach(connection => {
+            connectionsData = connectionsData.filter(connection => 
+                connection && connection.source_id && connection.pwsid
+            ).map(connection => {
                 connection.volume_mgd = Number(connection.volume_mgd) || 0;
                 connection.pct_of_supply = Number(connection.pct_of_supply) || 0;
+                return connection;
             });
-        }
-
-        // Load sample data (if CSV loading fails)
-        async function loadSampleData() {
-            // Sample data - replace with your actual data loading from CSV files
-            systemsData = [
-                {system_name: "San Francisco PWS", pwsid: "CA1234567", county: "San Francisco", population: 147351, pop_bin: "Large", provider_type: "Retail", is_wholesale: "N", has_gw_supply: "Yes", gw_mcl_compliant: "NA", lat: 36.1118330078898, lon: -118.593996792566, num_sw_sources: 3},
-                {system_name: "Los Angeles PWS", pwsid: "CA2345678", county: "Los Angeles", population: 395211, pop_bin: "Large", provider_type: "Retail", is_wholesale: "Y", has_gw_supply: "Yes", gw_mcl_compliant: "Yes", lat: 35.5091100451536, lon: -122.49656374671, num_sw_sources: 2},
-                {system_name: "San Diego PWS", pwsid: "CA3456789", county: "San Diego", population: 207444, pop_bin: "Large", provider_type: "Retail", is_wholesale: "N", has_gw_supply: "Yes", gw_mcl_compliant: "Yes", lat: 38.4805202138377, lon: -119.885758842458, num_sw_sources: 3},
-                {system_name: "Sacramento PWS", pwsid: "CA4567890", county: "Sacramento", population: 442094, pop_bin: "Small", provider_type: "Retail", is_wholesale: "N", has_gw_supply: "Yes", gw_mcl_compliant: "Yes", lat: 36.4668398776557, lon: -121.289346131613, num_sw_sources: 2},
-                {system_name: "Fresno PWS", pwsid: "CA5678901", county: "Fresno", population: 470531, pop_bin: "Large", provider_type: "Both", is_wholesale: "Y", has_gw_supply: "Yes", gw_mcl_compliant: "Yes", lat: 38.4553539417684, lon: -120.411009042524, num_sw_sources: 3},
-                {system_name: "Oakland PWS", pwsid: "CA6789012", county: "Alameda", population: 27550, pop_bin: "Small", provider_type: "Wholesale", is_wholesale: "N", has_gw_supply: "Yes", gw_mcl_compliant: "NA", lat: 38.4681423023576, lon: -119.129759481992, num_sw_sources: 1},
-                {system_name: "San Jose PWS", pwsid: "CA7890123", county: "Santa Clara", population: 266412, pop_bin: "Large", provider_type: "Both", is_wholesale: "N", has_gw_supply: "Yes", gw_mcl_compliant: "No", lat: 38.3688827661099, lon: -120.565111499163, num_sw_sources: 1},
-                {system_name: "Long Beach PWS", pwsid: "CA8901234", county: "Los Angeles", population: 446747, pop_bin: "Small", provider_type: "Wholesale", is_wholesale: "N", has_gw_supply: "No", gw_mcl_compliant: "Yes", lat: 36.4190742818173, lon: -121.888755166088, num_sw_sources: 1},
-                {system_name: "Bakersfield PWS", pwsid: "CA9012345", county: "Kern", population: 277960, pop_bin: "Small", provider_type: "Retail", is_wholesale: "N", has_gw_supply: "Yes", gw_mcl_compliant: "NA", lat: 38.1496133725159, lon: -121.160092900041, num_sw_sources: 3},
-                {system_name: "Santa Cruz PWS", pwsid: "CA0123456", county: "Santa Cruz", population: 231024, pop_bin: "Small", provider_type: "Wholesale", is_wholesale: "N", has_gw_supply: "Yes", gw_mcl_compliant: "Yes", lat: 37.460716223577, lon: -118.825694269035, num_sw_sources: 2}
-            ];
-            
-            sourcesData = [
-                {source_id: "src_A", source_name: "Hetch Hetchy Reservoir", source_type: "Reservoir", source_lat: 37.9468, source_lon: -119.7866, project: "SWP", num_systems_served: 1},
-                {source_id: "src_B", source_name: "Owens River", source_type: "River", source_lat: 36.5436, source_lon: -118.2732, project: "LADWP", num_systems_served: 1},
-                {source_id: "src_C", source_name: "Colorado River Aqueduct", source_type: "Aqueduct", source_lat: 33.7175, source_lon: -114.7222, project: "MWD", num_systems_served: 3},
-                {source_id: "src_D", source_name: "Sacramento River", source_type: "River", source_lat: 38.5976, source_lon: -121.1927, project: "CVP", num_systems_served: 4},
-                {source_id: "src_E", source_name: "Feather River", source_type: "River", source_lat: 39.6543, source_lon: -121.3456, project: "CVP", num_systems_served: 4},
-                {source_id: "src_F", source_name: "Local Groundwater", source_type: "Groundwater", source_lat: 37.2345, source_lon: -121.1234, project: "Local", num_systems_served: 6},
-                {source_id: "src_G", source_name: "Delta Intake", source_type: "River Intake", source_lat: 38.0456, source_lon: -121.789, project: "SWP", num_systems_served: 2}
-            ];
-            
-            connectionsData = [
-                {source_id: "src_A", pwsid: "CA1234567", purchased: "No", volume_mgd: 99, pct_of_supply: 19, most_recent_year: 2017},
-                {source_id: "src_B", pwsid: "CA1234567", purchased: "Yes", volume_mgd: 107, pct_of_supply: 19, most_recent_year: 2016},
-                {source_id: "src_D", pwsid: "CA1234567", purchased: "No", volume_mgd: 124, pct_of_supply: 49, most_recent_year: 2021},
-                {source_id: "src_F", pwsid: "CA2345678", purchased: "Yes", volume_mgd: 37, pct_of_supply: 96, most_recent_year: 2020},
-                {source_id: "src_D", pwsid: "CA2345678", purchased: "Yes", volume_mgd: 114, pct_of_supply: null, most_recent_year: null},
-                {source_id: "src_E", pwsid: "CA3456789", purchased: "Yes", volume_mgd: 135, pct_of_supply: 68, most_recent_year: 2024},
-                {source_id: "src_E", pwsid: "CA3456789", purchased: "Yes", volume_mgd: 166, pct_of_supply: 68, most_recent_year: 2016},
-                {source_id: "src_C", pwsid: "CA3456789", purchased: "No", volume_mgd: 159, pct_of_supply: 68, most_recent_year: 2016},
-                {source_id: "src_F", pwsid: "CA4567890", purchased: "No", volume_mgd: 171, pct_of_supply: 50, most_recent_year: 2023},
-                {source_id: "src_C", pwsid: "CA4567890", purchased: "Yes", volume_mgd: 105, pct_of_supply: null, most_recent_year: null},
-                {source_id: "src_F", pwsid: "CA5678901", purchased: "No", volume_mgd: 88, pct_of_supply: 20, most_recent_year: 2017},
-                {source_id: "src_F", pwsid: "CA5678901", purchased: "Yes", volume_mgd: 60, pct_of_supply: 20, most_recent_year: 2020},
-                {source_id: "src_G", pwsid: "CA5678901", purchased: "No", volume_mgd: 130, pct_of_supply: null, most_recent_year: null},
-                {source_id: "src_D", pwsid: "CA6789012", purchased: "Yes", volume_mgd: 121, pct_of_supply: null, most_recent_year: null},
-                {source_id: "src_G", pwsid: "CA7890123", purchased: "No", volume_mgd: 60, pct_of_supply: null, most_recent_year: null},
-                {source_id: "src_E", pwsid: "CA8901234", purchased: "Yes", volume_mgd: 128, pct_of_supply: 92, most_recent_year: 2017},
-                {source_id: "src_F", pwsid: "CA9012345", purchased: "No", volume_mgd: 138, pct_of_supply: 24, most_recent_year: 2020},
-                {source_id: "src_C", pwsid: "CA9012345", purchased: "No", volume_mgd: 19, pct_of_supply: 47, most_recent_year: 2020},
-                {source_id: "src_D", pwsid: "CA9012345", purchased: "No", volume_mgd: 143, pct_of_supply: 47, most_recent_year: 2019},
-                {source_id: "src_F", pwsid: "CA0123456", purchased: "No", volume_mgd: 184, pct_of_supply: 84, most_recent_year: 2022},
-                {source_id: "src_E", pwsid: "CA0123456", purchased: "Yes", volume_mgd: 127, pct_of_supply: 84, most_recent_year: 2021}
-            ];
         }
 
         function initMap() {
@@ -673,11 +631,10 @@
                     { title: "PWSID", data: "pwsid" },
                     { title: "County", data: "county" },
                     { title: "Population", data: "population", render: $.fn.dataTable.render.number(',', '.', 0) },
-                    { title: "Size", data: "pop_bin" },
+                    { title: "System Size", data: "pop_bin" },
                     { title: "Provider Type", data: "provider_type" },
-                    { title: "Wholesale", data: "is_wholesale" },
                     { title: "GW Supply", data: "has_gw_supply" },
-                    { title: "GW MCL Compliant", data: "gw_mcl_compliant" },
+                    { title: "DW-Compliant GW", data: "gw_mcl_compliant" },
                     { title: "SW Sources", data: "num_sw_sources" }
                 ],
                 pageLength: 5
@@ -689,7 +646,6 @@
                     { title: "Source ID", data: "source_id" },
                     { title: "PWSID", data: "pwsid" },
                     { title: "Purchased", data: "purchased" },
-                    { title: "Volume (MGD)", data: "volume_mgd" },
                     { title: "% of Supply", data: "pct_of_supply" },
                     { title: "Most Recent Year", data: "most_recent_year" }
                 ],
@@ -699,7 +655,6 @@
             sourcesTable = $('#sourcesTable').DataTable({
                 data: [],
                 columns: [
-                    { title: "Source ID", data: "source_id" },
                     { title: "Source Name", data: "source_name" },
                     { title: "Source Type", data: "source_type" },
                     { title: "Project", data: "project" },
@@ -774,10 +729,21 @@
             // Get filtered data
             const { filteredSystems, filteredSources, filteredConnections } = filterData();
             
-            // Update data tables
-            systemsTable.clear().rows.add(filteredSystems).draw();
-            sourcesTable.clear().rows.add(filteredSources).draw();
-            connectionsTable.clear().rows.add(filteredConnections).draw();
+            // Additional filtering to ensure no empty rows
+            const validSystems = filteredSystems.filter(system => 
+                system && system.system_name && system.pwsid
+            );
+            const validSources = filteredSources.filter(source => 
+                source && source.source_name && source.source_id
+            );
+            const validConnections = filteredConnections.filter(connection => 
+                connection && connection.source_id && connection.pwsid
+            );
+            
+            // Update data tables with validated data
+            systemsTable.clear().rows.add(validSystems).draw();
+            sourcesTable.clear().rows.add(validSources).draw();
+            connectionsTable.clear().rows.add(validConnections).draw();
             
             // Add markers for systems
             filteredSystems.forEach(system => {
