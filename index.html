@@ -1,781 +1,792 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>California Water Systems Dashboard</title>
-    
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <style>
-        body {
-            padding: 20px;
-            font-family: Arial, sans-serif;
-        }
-        #map {
-            height: 600px;
-            margin-bottom: 20px;
-            border-radius: 5px;
-            border: 1px solid #ddd;
-        }
-        .filter-section {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        .filter-group {
-            margin-bottom: 15px;
-        }
-        .legend {
-            padding: 10px;
-            background: white;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.2);
-        }
-        .legend i {
-            width: 18px;
-            height: 18px;
-            float: left;
-            margin-right: 8px;
-            opacity: 0.7;
-        }
-        .data-table {
-            margin-top: 20px;
-        }
-        .section-title {
-            border-bottom: 2px solid #0d6efd;
-            padding-bottom: 5px;
-            margin-bottom: 15px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>California Water Systems Network Dashboard</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+
+  <!-- DataTables CSS -->
+  <link href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet"/>
+
+  <style>
+    :root{
+      --brand1:#007bff; --brand2:#0056b3;
+    }
+    html,body{height:100%}
+    body{
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
+      background:#f8f9fa; margin:0; overflow:hidden;
+    }
+    .container-fluid{height:100%; padding:0}
+    .row{height:100%; margin:0}
+    .sidebar{
+      height:100%; overflow-y:auto; background:linear-gradient(to bottom,#e6f2ff,#c9e5ff);
+      padding:20px; box-shadow: 2px 0 10px rgba(0,0,0,.08);
+    }
+    .main-content{height:100%; overflow-y:auto; padding:20px}
+    #map{
+      height:600px; width:100%; border-radius:10px; box-shadow:0 4px 8px rgba(0,0,0,.08);
+      position: relative;
+    }
+    .card{border:none; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,.05); margin-bottom:16px}
+    .card-header{background:linear-gradient(to right,var(--brand1),var(--brand2)); color:white; border-radius:12px 12px 0 0 !important; font-weight:600}
+    .btn-primary{background:linear-gradient(to right,var(--brand1),var(--brand2)); border:none}
+    .btn-secondary{background:linear-gradient(to right,#6c757d,#5a6268); border:none}
+
+    /* Triangle source marker */
+    .triangle-marker{
+      width:0; height:0;
+      border-left:8px solid transparent;
+      border-right:8px solid transparent;
+      border-bottom:16px solid #d00; /* red triangle */
+      transform: translate(-8px,-8px); /* center-ish */
+    }
+    .triangle-marker.outline{
+      position: relative;
+    }
+    .triangle-marker.outline::after{
+      content:"";
+      position:absolute; left:-9px; top:1px;
+      width:0; height:0;
+      border-left:9px solid transparent;
+      border-right:9px solid transparent;
+      border-bottom:18px solid rgba(0,0,0,.25); /* subtle outline shadow */
+      z-index:-1;
+    }
+
+    /* Map legend as Leaflet control content */
+    .map-legend{
+      background: #fff; padding:10px 12px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,.2);
+      font-size:.9rem
+    }
+    .legend-row{display:flex; align-items:center; gap:8px; margin:6px 0}
+    .legend-dot{
+      width:14px; height:14px; background:#06f; border-radius:50%;
+      box-shadow: inset 0 0 0 2px rgba(0,0,0,.15);
+    }
+    .legend-triangle{
+      width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:14px solid #d00;
+      filter: drop-shadow(0 1px 0 rgba(0,0,0,.25));
+    }
+    .legend-arrow{
+      display:inline-block; position:relative; height:3px; width:22px; background:#0066cc; border-radius:2px;
+    }
+    .legend-arrow:after{
+      content:""; position:absolute; right:-5px; top:-3px;
+      width:0; height:0; border-top:6px solid transparent; border-bottom:6px solid transparent; border-left:6px solid #0066cc;
+    }
+
+    .loading{
+      display:flex; align-items:center; justify-content:center; height:100vh; font-size:22px; color:var(--brand1)
+    }
+
+    /* Keep the map's container stacking context above tabs if needed */
+    #map .leaflet-control{z-index: 1000}
+  </style>
 </head>
 <body>
-    <div class="container-fluid">
-        <h1 class="text-center mb-4">California Water Systems Dashboard</h1>
-        
-        <!-- Search and Filters Section -->
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">Search and Filters</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <!-- Search Box -->
-                            <div class="col-md-4 mb-3">
-                                <label for="search-input" class="form-label">Search (System Name, PWSID, Source Name)</label>
-                                <input type="text" class="form-control" id="search-input" placeholder="Enter search term...">
-                            </div>
-                            <div class="col-md-2 mb-3 d-flex align-items-end">
-                                <button id="search-btn" class="btn btn-primary">Search</button>
-                            </div>
-                            <div class="col-md-6 mb-3 d-flex align-items-end justify-content-end">
-                                <button id="download-btn" class="btn btn-success">Download Filtered Data</button>
-                                <button id="reset-btn" class="btn btn-outline-secondary ms-2">Reset Filters</button>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <!-- Sources Filters -->
-                            <div class="col-md-4">
-                                <h6 class="section-title">Sources Filters</h6>
-                                <div class="filter-group">
-                                    <label for="project-filter" class="form-label">Project</label>
-                                    <select class="form-select" id="project-filter" multiple>
-                                        <option value="SWP">SWP</option>
-                                        <option value="LADWP">LADWP</option>
-                                        <option value="MWD">MWD</option>
-                                        <option value="CVP">CVP</option>
-                                        <option value="Local">Local</option>
-                                    </select>
-                                </div>
-                                <div class="filter-group">
-                                    <label for="source-type-filter" class="form-label">Source Type</label>
-                                    <select class="form-select" id="source-type-filter" multiple>
-                                        <option value="Reservoir">Reservoir</option>
-                                        <option value="River">River</option>
-                                        <option value="Aqueduct">Aqueduct</option>
-                                        <option value="Groundwater">Groundwater</option>
-                                        <option value="River Intake">River Intake</option>
-                                    </select>
-                                </div>
-                                <div class="filter-group">
-                                    <label class="form-label">Number of Systems Served</label>
-                                    <div class="row">
-                                        <div class="col">
-                                            <input type="number" class="form-control" id="min-systems" placeholder="Min" min="1">
-                                        </div>
-                                        <div class="col">
-                                            <input type="number" class="form-control" id="max-systems" placeholder="Max">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Systems Filters -->
-                            <div class="col-md-4">
-                                <h6 class="section-title">Systems Filters</h6>
-                                <div class="filter-group">
-                                    <label for="system-size-filter" class="form-label">System Size</label>
-                                    <select class="form-select" id="system-size-filter" multiple>
-                                        <option value="Small">Small</option>
-                                        <option value="Large">Large</option>
-                                    </select>
-                                </div>
-                                <div class="filter-group">
-                                    <label for="gw-access-filter" class="form-label">GW Access</label>
-                                    <select class="form-select" id="gw-access-filter">
-                                        <option value="all">All</option>
-                                        <option value="Yes">Yes</option>
-                                        <option value="No">No</option>
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            <!-- Links Filters -->
-                            <div class="col-md-4">
-                                <h6 class="section-title">Links Filters</h6>
-                                <div class="filter-group">
-                                    <label class="form-label">% of Supply</label>
-                                    <div class="row">
-                                        <div class="col">
-                                            <input type="number" class="form-control" id="min-pct-supply" placeholder="Min" min="0" max="100">
-                                        </div>
-                                        <div class="col">
-                                            <input type="number" class="form-control" id="max-pct-supply" placeholder="Max" min="0" max="100">
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="filter-group">
-                                    <label for="purchased-filter" class="form-label">Purchased</label>
-                                    <select class="form-select" id="purchased-filter">
-                                        <option value="all">All</option>
-                                        <option value="Yes">Yes</option>
-                                        <option value="No">No</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+<div class="container-fluid">
+  <div class="row">
+    <!-- Sidebar -->
+    <div class="col-md-3 col-lg-3 sidebar">
+      <h2 class="text-center mb-3">California Water Systems</h2>
+
+      <!-- Search & Zoom -->
+      <div class="card">
+        <div class="card-header"><h5 class="mb-0">Search &amp; Zoom</h5></div>
+        <div class="card-body">
+          <div class="mb-2">
+            <label class="form-label" for="searchSystemInput">System Name</label>
+            <input id="searchSystemInput" class="form-control" list="systemNameList" placeholder="Type to search system..."/>
+            <datalist id="systemNameList"></datalist>
+          </div>
+          <div class="mb-2">
+            <label class="form-label" for="searchSourceInput">Source Name</label>
+            <input id="searchSourceInput" class="form-control" list="sourceNameList" placeholder="Type to search source..."/>
+            <datalist id="sourceNameList"></datalist>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="searchPWSIDInput">PWSID</label>
+            <input id="searchPWSIDInput" class="form-control" list="pwsidList" placeholder="Type PWSID..."/>
+            <datalist id="pwsidList"></datalist>
+          </div>
+          <div class="d-grid gap-2">
+            <button id="zoomSelected" class="btn btn-primary">Zoom to Selection</button>
+            <button id="resetView" class="btn btn-secondary">Reset View</button>
+          </div>
         </div>
-        
-        <!-- Map Section -->
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <div id="map"></div>
-            </div>
+      </div>
+
+      <!-- System Filters -->
+      <div class="card">
+        <div class="card-header"><h5 class="mb-0">System Filters</h5></div>
+        <div class="card-body">
+          <div class="mb-2">
+            <label class="form-label" for="gwSupply">GW Supply</label>
+            <select id="gwSupply" class="form-select">
+              <option value="All">All</option>
+              <option value="Y">Y</option>
+              <option value="N">N</option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label" for="systemSize">System Size</label>
+            <select id="systemSize" class="form-select">
+              <option value="All">All</option>
+              <!-- dynamically filled (either from column or derived from population) -->
+            </select>
+          </div>
         </div>
-        
-        <!-- Data Table Section -->
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">Filtered Data</h5>
-                    </div>
-                    <div class="card-body">
-                        <ul class="nav nav-tabs" id="dataTabs" role="tablist">
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="sources-tab" data-bs-toggle="tab" data-bs-target="#sources" type="button" role="tab">Sources</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="systems-tab" data-bs-toggle="tab" data-bs-target="#systems" type="button" role="tab">Systems</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="links-tab" data-bs-toggle="tab" data-bs-target="#links" type="button" role="tab">Links</button>
-                            </li>
-                        </ul>
-                        <div class="tab-content p-3" id="dataTabsContent">
-                            <div class="tab-pane fade show active" id="sources" role="tabpanel">
-                                <table class="table table-striped table-hover" id="sources-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Source ID</th>
-                                            <th>Source Name</th>
-                                            <th>Source Type</th>
-                                            <th>Project</th>
-                                            <th>Systems Served</th>
-                                            <th>Latitude</th>
-                                            <th>Longitude</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody></tbody>
-                                </table>
-                            </div>
-                            <div class="tab-pane fade" id="systems" role="tabpanel">
-                                <table class="table table-striped table-hover" id="systems-table">
-                                    <thead>
-                                        <tr>
-                                            <th>System Name</th>
-                                            <th>PWSID</th>
-                                            <th>County</th>
-                                            <th>Population</th>
-                                            <th>Size</th>
-                                            <th>Provider Type</th>
-                                            <th>GW Access</th>
-                                            <th>GW Compliant</th>
-                                            <th>SW Sources</th>
-                                            <th>Latitude</th>
-                                            <th>Longitude</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody></tbody>
-                                </table>
-                            </div>
-                            <div class="tab-pane fade" id="links" role="tabpanel">
-                                <table class="table table-striped table-hover" id="links-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Source ID</th>
-                                            <th>PWSID</th>
-                                            <th>Purchased</th>
-                                            <th>Volume (MGD)</th>
-                                            <th>% of Supply</th>
-                                            <th>Year</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+      </div>
+
+      <!-- Source Filters -->
+      <div class="card">
+        <div class="card-header"><h5 class="mb-0">Source Filters</h5></div>
+        <div class="card-body">
+          <div class="mb-2">
+            <label class="form-label" for="sourceType">Source Type</label>
+            <select id="sourceType" class="form-select">
+              <option value="All">All</option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label" for="project">Project</label>
+            <select id="project" class="form-select">
+              <option value="All">All</option>
+            </select>
+          </div>
         </div>
+      </div>
+
+      <!-- Connection Filters -->
+      <div class="card">
+        <div class="card-header"><h5 class="mb-0">Connection Filters</h5></div>
+        <div class="card-body">
+          <label class="form-label" for="purchaseType">Purchased</label>
+          <select id="purchaseType" class="form-select">
+            <option value="All">All</option>
+            <option value="Purchased">Purchased</option>
+            <option value="Direct">Direct</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Downloads -->
+      <div class="card">
+        <div class="card-header"><h5 class="mb-0">Download CSVs</h5></div>
+        <div class="card-body d-grid gap-2">
+          <button class="btn btn-outline-primary" id="downloadSystems">Download Systems (filtered)</button>
+          <button class="btn btn-outline-primary" id="downloadSources">Download Sources (filtered)</button>
+          <button class="btn btn-outline-primary" id="downloadConnections">Download Connections (filtered)</button>
+        </div>
+      </div>
     </div>
 
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- PapaParse for CSV processing -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
-    
-    <!-- FileSaver for download functionality -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-    
-    <script>
-        // Global variables to store data
-        let sourcesData = [];
-        let systemsData = [];
-        let linksData = [];
-        
-        // Global variables for map elements
-        let map;
-        let sourcesLayer;
-        let systemsLayer;
-        let linksLayer = [];
-        
-        // Initialize the application when the DOM is loaded
-        document.addEventListener('DOMContentLoaded', function() {
-            // Parse the CSV data (embedded in the HTML)
-            parseCSVData();
-            
-            // Initialize the map
-            initMap();
-            
-            // Set up event listeners
-            setupEventListeners();
-            
-            // Apply initial rendering
-            applyFilters();
-        });
-        
-        // Parse the CSV data embedded in the HTML
-        function parseCSVData() {
-            // Parse sources data
-            const sourcesCSV = `"source_id","source_name","source_type","source_lat","source_lon","project","num_systems_served"
-"src_A","Hetch Hetchy Reservoir","Reservoir",37.9468,-119.7866,"SWP",1
-"src_B","Owens River","River",36.5436,-118.2732,"LADWP",1
-"src_C","Colorado River Aqueduct","Aqueduct",33.7175,-114.7222,"MWD",3
-"src_D","Sacramento River","River",38.5976,-121.1927,"CVP",4
-"src_E","Feather River","River",39.6543,-121.3456,"CVP",4
-"src_F","Local Groundwater","Groundwater",37.2345,-121.1234,"Local",6
-"src_G","Delta Intake","River Intake",38.0456,-121.789,"SWP",2`;
-            
-            // Parse systems data
-            const systemsCSV = `"system_name","pwsid","county","population","pop_bin","provider_type","is_wholesale","has_gw_supply","gw_mcl_compliant","lat","lon","num_sw_sources"
-"San Francisco PWS","CA1234567","San Francisco",147351,"Large","Retail","N","Yes","NA",36.1118330078898,-118.593996792566,3
-"Los Angeles PWS","CA2345678","Los Angeles",395211,"Large","Retail","Y","Yes","Yes",35.5091100451536,-122.49656374671,2
-"San Diego PWS","CA3456789","San Diego",207444,"Large","Retail","N","Yes","Yes",38.4805202138377,-119.885758842458,3
-"Sacramento PWS","CA4567890","Sacramento",442094,"Small","Retail","N","Yes","Yes",36.4668398776557,-121.289346131613,2
-"Fresno PWS","CA5678901","Fresno",470531,"Large","Both","Y","Yes","Yes",38.4553539417684,-120.411009042524,3
-"Oakland PWS","CA6789012","Alameda",27550,"Small","Wholesale","N","Yes","NA",38.4681423023576,-119.129759481992,1
-"San Jose PWS","CA7890123","Santa Clara",266412,"Large","Both","N","Yes","No",38.3688827661099,-120.565111499163,1
-"Long Beach PWS","CA8901234","Los Angeles",446747,"Small","Wholesale","N","No","Yes",36.4190742818173,-121.888755166088,1
-"Bakersfield PWS","CA9012345","Kern",277960,"Small","Retail","N","Yes","NA",38.1496133725159,-121.160092900041,3
-"Santa Cruz PWS","CA0123456","Santa Cruz",231024,"Small","Wholesale","N","Yes","Yes",37.460716223577,-118.825694269035,2`;
-            
-            // Parse links data
-            const linksCSV = `"source_id","pwsid","purchased","volume_mgd","pct_of_supply","most_recent_year"
-"src_A","CA1234567","No",99,19,2017
-"src_B","CA1234567","Yes",107,19,2016
-"src_D","CA1234567","No",124,49,2021
-"src_F","CA2345678","Yes",37,96,2020
-"src_D","CA2345678","Yes",114,NA,NA
-"src_E","CA3456789","Yes",135,68,2024
-"src_E","CA3456789","Yes",166,68,2016
-"src_C","CA3456789","No",159,68,2016
-"src_F","CA4567890","No",171,50,2023
-"src_C","CA4567890","Yes",105,NA,NA
-"src_F","CA5678901","No",88,20,2017
-"src_F","CA5678901","Yes",60,20,2020
-"src_G","CA5678901","No",130,NA,NA
-"src_D","CA6789012","Yes",121,NA,NA
-"src_G","CA7890123","No",60,NA,NA
-"src_E","CA8901234","Yes",128,92,2017
-"src_F","CA9012345","No",138,24,2020
-"src_C","CA9012345","No",19,47,2020
-"src_D","CA9012345","No",143,47,2019
-"src_F","CA0123456","No",184,84,2022
-"src_E","CA0123456","Yes",127,84,2021`;
-            
-            // Parse the CSV strings into JavaScript objects
-            sourcesData = Papa.parse(sourcesCSV, {header: true}).data;
-            systemsData = Papa.parse(systemsCSV, {header: true}).data;
-            linksData = Papa.parse(linksCSV, {header: true}).data;
-            
-            // Convert numeric fields to numbers
-            sourcesData.forEach(source => {
-                source.source_lat = parseFloat(source.source_lat);
-                source.source_lon = parseFloat(source.source_lon);
-                source.num_systems_served = parseInt(source.num_systems_served);
-            });
-            
-            systemsData.forEach(system => {
-                system.lat = parseFloat(system.lat);
-                system.lon = parseFloat(system.lon);
-                system.population = parseInt(system.population);
-                system.num_sw_sources = parseInt(system.num_sw_sources);
-            });
-            
-            linksData.forEach(link => {
-                link.volume_mgd = parseFloat(link.volume_mgd);
-                link.pct_of_supply = link.pct_of_supply === "NA" ? null : parseFloat(link.pct_of_supply);
-                link.most_recent_year = link.most_recent_year === "NA" ? null : parseInt(link.most_recent_year);
-            });
-        }
-        
-        // Initialize the map
-        function initMap() {
-            // Create map centered on California
-            map = L.map('map').setView([36.7783, -119.4179], 6);
-            
-            // Add base tile layer
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            }).addTo(map);
-            
-            // Create layer groups
-            sourcesLayer = L.layerGroup().addTo(map);
-            systemsLayer = L.layerGroup().addTo(map);
-            
-            // Add legend
-            const legend = L.control({position: 'bottomright'});
-            legend.onAdd = function() {
-                const div = L.DomUtil.create('div', 'legend');
-                div.innerHTML = `
-                    <h4>Legend</h4>
-                    <p><i style="background: blue; border-radius: 50%;"></i> Water Source</p>
-                    <p><i style="background: green; border-radius: 50%;"></i> Water System</p>
-                    <p><i style="background: gray; width: 10px; height: 2px; margin-top: 8px;"></i> Water Link</p>
-                `;
-                return div;
-            };
-            legend.addTo(map);
-        }
-        
-        // Set up event listeners for filters and buttons
-        function setupEventListeners() {
-            // Add change listeners to all filters
-            document.getElementById('project-filter').addEventListener('change', applyFilters);
-            document.getElementById('source-type-filter').addEventListener('change', applyFilters);
-            document.getElementById('min-systems').addEventListener('input', applyFilters);
-            document.getElementById('max-systems').addEventListener('input', applyFilters);
-            document.getElementById('system-size-filter').addEventListener('change', applyFilters);
-            document.getElementById('gw-access-filter').addEventListener('change', applyFilters);
-            document.getElementById('min-pct-supply').addEventListener('input', applyFilters);
-            document.getElementById('max-pct-supply').addEventListener('input', applyFilters);
-            document.getElementById('purchased-filter').addEventListener('change', applyFilters);
-            
-            // Search button
-            document.getElementById('search-btn').addEventListener('click', handleSearch);
-            
-            // Download button
-            document.getElementById('download-btn').addEventListener('click', downloadData);
-            
-            // Reset button
-            document.getElementById('reset-btn').addEventListener('click', resetFilters);
-        }
-        
-        // Apply all filters and update the map and table
-        function applyFilters() {
-            // Get filter values
-            const projectFilter = getSelectedValues('project-filter');
-            const sourceTypeFilter = getSelectedValues('source-type-filter');
-            const minSystems = document.getElementById('min-systems').value ? parseInt(document.getElementById('min-systems').value) : null;
-            const maxSystems = document.getElementById('max-systems').value ? parseInt(document.getElementById('max-systems').value) : null;
-            const systemSizeFilter = getSelectedValues('system-size-filter');
-            const gwAccessFilter = document.getElementById('gw-access-filter').value;
-            const minPctSupply = document.getElementById('min-pct-supply').value ? parseFloat(document.getElementById('min-pct-supply').value) : null;
-            const maxPctSupply = document.getElementById('max-pct-supply').value ? parseFloat(document.getElementById('max-pct-supply').value) : null;
-            const purchasedFilter = document.getElementById('purchased-filter').value;
-            
-            // Filter sources
-            const filteredSources = sourcesData.filter(source => {
-                // Project filter
-                if (projectFilter.length > 0 && !projectFilter.includes(source.project)) return false;
-                
-                // Source type filter
-                if (sourceTypeFilter.length > 0 && !sourceTypeFilter.includes(source.source_type)) return false;
-                
-                // Number of systems served filter
-                if (minSystems !== null && source.num_systems_served < minSystems) return false;
-                if (maxSystems !== null && source.num_systems_served > maxSystems) return false;
-                
-                return true;
-            });
-            
-            // Filter systems
-            const filteredSystems = systemsData.filter(system => {
-                // System size filter
-                if (systemSizeFilter.length > 0 && !systemSizeFilter.includes(system.pop_bin)) return false;
-                
-                // GW access filter
-                if (gwAccessFilter !== 'all' && system.has_gw_supply !== gwAccessFilter) return false;
-                
-                return true;
-            });
-            
-            // Filter links
-            const filteredLinks = linksData.filter(link => {
-                // % of supply filter
-                if (minPctSupply !== null && (link.pct_of_supply === null || link.pct_of_supply < minPctSupply)) return false;
-                if (maxPctSupply !== null && (link.pct_of_supply === null || link.pct_of_supply > maxPctSupply)) return false;
-                
-                // Purchased filter
-                if (purchasedFilter !== 'all' && link.purchased !== purchasedFilter) return false;
-                
-                // Check if source and system are in filtered lists
-                const sourceInFiltered = filteredSources.some(source => source.source_id === link.source_id);
-                const systemInFiltered = filteredSystems.some(system => system.pwsid === link.pwsid);
-                
-                return sourceInFiltered && systemInFiltered;
-            });
-            
-            // Update map with filtered data
-            updateMap(filteredSources, filteredSystems, filteredLinks);
-            
-            // Update tables with filtered data
-            updateTables(filteredSources, filteredSystems, filteredLinks);
-        }
-        
-        // Get selected values from a multi-select element
-        function getSelectedValues(selectId) {
-            const select = document.getElementById(selectId);
-            return Array.from(select.selectedOptions).map(option => option.value);
-        }
-        
-        // Update the map with filtered data
-        function updateMap(sources, systems, links) {
-            // Clear existing layers
-            sourcesLayer.clearLayers();
-            systemsLayer.clearLayers();
-            linksLayer.forEach(layer => map.removeLayer(layer));
-            linksLayer = [];
-            
-            // Add filtered sources to map
-            sources.forEach(source => {
-                const marker = L.circleMarker([source.source_lat, source.source_lon], {
-                    color: 'blue',
-                    fillColor: 'blue',
-                    fillOpacity: 0.7,
-                    radius: 8
-                });
-                
-                // Add popup
-                marker.bindPopup(`
-                    <strong>Source Name:</strong> ${source.source_name}<br>
-                    <strong>Project:</strong> ${source.project}<br>
-                    <strong>Source Type:</strong> ${source.source_type}<br>
-                    <strong>Number of Systems Served:</strong> ${source.num_systems_served}
-                `);
-                
-                marker.addTo(sourcesLayer);
-            });
-            
-            // Add filtered systems to map
-            systems.forEach(system => {
-                const marker = L.circleMarker([system.lat, system.lon], {
-                    color: 'green',
-                    fillColor: 'green',
-                    fillOpacity: 0.7,
-                    radius: 8
-                });
-                
-                // Add popup
-                marker.bindPopup(`
-                    <strong>System Name:</strong> ${system.system_name}<br>
-                    <strong>PWSID:</strong> ${system.pwsid}<br>
-                    <strong>County:</strong> ${system.county}<br>
-                    <strong>Provider Type:</strong> ${system.provider_type}<br>
-                    <strong>Population Served:</strong> ${system.population.toLocaleString()}<br>
-                    <strong>Total SW Sources:</strong> ${system.num_sw_sources}<br>
-                    <strong>Has GW Access:</strong> ${system.has_gw_supply}<br>
-                    <strong>DWS-Compliant GW:</strong> ${system.gw_mcl_compliant}
-                `);
-                
-                marker.addTo(systemsLayer);
-            });
-            
-            // Add filtered links to map
-            links.forEach(link => {
-                // Find source and system coordinates
-                const source = sources.find(s => s.source_id === link.source_id);
-                const system = systems.find(s => s.pwsid === link.pwsid);
-                
-                if (source && system) {
-                    // Create a polyline with arrowhead
-                    const polyline = L.polyline([
-                        [source.source_lat, source.source_lon],
-                        [system.lat, system.lon]
-                    ], {
-                        color: 'gray',
-                        weight: 2
-                    });
-                    
-                    // Add arrowhead
-                    const arrowHead = L.polylineDecorator(polyline, {
-                        patterns: [
-                            {
-                                offset: '100%',
-                                repeat: 0,
-                                symbol: L.Symbol.arrowHead({
-                                    pixelSize: 10,
-                                    polygon: false,
-                                    pathOptions: {
-                                        stroke: true,
-                                        color: 'gray',
-                                        weight: 2
-                                    }
-                                })
-                            }
-                        ]
-                    });
-                    
-                    // Add popup
-                    polyline.bindPopup(`
-                        <strong>Purchased:</strong> ${link.purchased}<br>
-                        <strong>Source ID:</strong> ${link.source_id}<br>
-                        <strong>PWSID:</strong> ${link.pwsid}<br>
-                        <strong>Volume (MGD):</strong> ${link.volume_mgd}<br>
-                        <strong>% of Supply:</strong> ${link.pct_of_supply || 'N/A'}<br>
-                        <strong>Year:</strong> ${link.most_recent_year || 'N/A'}
-                    `);
-                    
-                    polyline.addTo(map);
-                    arrowHead.addTo(map);
-                    linksLayer.push(polyline);
-                    linksLayer.push(arrowHead);
-                }
-            });
-            
-            // Fit map to show all visible elements
-            const allLayers = L.featureGroup([sourcesLayer, systemsLayer, ...linksLayer]);
-            if (allLayers.getLayers().length > 0) {
-                map.fitBounds(allLayers.getBounds(), {padding: [50, 50]});
-            }
-        }
-        
-        // Update the data tables with filtered data
-        function updateTables(sources, systems, links) {
-            // Update sources table
-            const sourcesTable = document.getElementById('sources-table').querySelector('tbody');
-            sourcesTable.innerHTML = '';
-            
-            sources.forEach(source => {
-                const row = sourcesTable.insertRow();
-                row.insertCell(0).textContent = source.source_id;
-                row.insertCell(1).textContent = source.source_name;
-                row.insertCell(2).textContent = source.source_type;
-                row.insertCell(3).textContent = source.project;
-                row.insertCell(4).textContent = source.num_systems_served;
-                row.insertCell(5).textContent = source.source_lat.toFixed(4);
-                row.insertCell(6).textContent = source.source_lon.toFixed(4);
-            });
-            
-            // Update systems table
-            const systemsTable = document.getElementById('systems-table').querySelector('tbody');
-            systemsTable.innerHTML = '';
-            
-            systems.forEach(system => {
-                const row = systemsTable.insertRow();
-                row.insertCell(0).textContent = system.system_name;
-                row.insertCell(1).textContent = system.pwsid;
-                row.insertCell(2).textContent = system.county;
-                row.insertCell(3).textContent = system.population.toLocaleString();
-                row.insertCell(4).textContent = system.pop_bin;
-                row.insertCell(5).textContent = system.provider_type;
-                row.insertCell(6).textContent = system.has_gw_supply;
-                row.insertCell(7).textContent = system.gw_mcl_compliant;
-                row.insertCell(8).textContent = system.num_sw_sources;
-                row.insertCell(9).textContent = system.lat.toFixed(4);
-                row.insertCell(10).textContent = system.lon.toFixed(4);
-            });
-            
-            // Update links table
-            const linksTable = document.getElementById('links-table').querySelector('tbody');
-            linksTable.innerHTML = '';
-            
-            links.forEach(link => {
-                const row = linksTable.insertRow();
-                row.insertCell(0).textContent = link.source_id;
-                row.insertCell(1).textContent = link.pwsid;
-                row.insertCell(2).textContent = link.purchased;
-                row.insertCell(3).textContent = link.volume_mgd;
-                row.insertCell(4).textContent = link.pct_of_supply || 'N/A';
-                row.insertCell(5).textContent = link.most_recent_year || 'N/A';
-            });
-        }
-        
-        // Handle search functionality
-        function handleSearch() {
-            const searchTerm = document.getElementById('search-input').value.toLowerCase();
-            
-            if (!searchTerm) return;
-            
-            // Find matching source or system
-            const matchingSource = sourcesData.find(source => 
-                source.source_id.toLowerCase().includes(searchTerm) || 
-                source.source_name.toLowerCase().includes(searchTerm)
-            );
-            
-            const matchingSystem = systemsData.find(system => 
-                system.system_name.toLowerCase().includes(searchTerm) || 
-                system.pwsid.toLowerCase().includes(searchTerm)
-            );
-            
-            if (matchingSource) {
-                // Zoom to source
-                map.setView([matchingSource.source_lat, matchingSource.source_lon], 10);
-            } else if (matchingSystem) {
-                // Zoom to system
-                map.setView([matchingSystem.lat, matchingSystem.lon], 10);
-            } else {
-                alert('No matching source or system found.');
-            }
-        }
-        
-        // Download filtered data as CSV
-        function downloadData() {
-            // Get filtered data (simplified for this example)
-            // In a real implementation, you would use the actual filtered data
-            const sourcesCSV = Papa.unparse(sourcesData);
-            const systemsCSV = Papa.unparse(systemsData);
-            const linksCSV = Papa.unparse(linksData);
-            
-            // Create blobs
-            const sourcesBlob = new Blob([sourcesCSV], {type: 'text/csv;charset=utf-8;'});
-            const systemsBlob = new Blob([systemsCSV], {type: 'text/csv;charset=utf-8;'});
-            const linksBlob = new Blob([linksCSV], {type: 'text/csv;charset=utf-8;'});
-            
-            // Download files
-            saveAs(sourcesBlob, 'water_sources.csv');
-            saveAs(systemsBlob, 'water_systems.csv');
-            saveAs(linksBlob, 'water_links.csv');
-        }
-        
-        // Reset all filters
-        function resetFilters() {
-            document.getElementById('project-filter').selectedIndex = -1;
-            document.getElementById('source-type-filter').selectedIndex = -1;
-            document.getElementById('min-systems').value = '';
-            document.getElementById('max-systems').value = '';
-            document.getElementById('system-size-filter').selectedIndex = -1;
-            document.getElementById('gw-access-filter').value = 'all';
-            document.getElementById('min-pct-supply').value = '';
-            document.getElementById('max-pct-supply').value = '';
-            document.getElementById('purchased-filter').value = 'all';
-            document.getElementById('search-input').value = '';
-            
-            applyFilters();
-        }
-        
-        // Polyline Decorator for arrowheads (simplified implementation)
-        L.PolylineDecorator = L.Polyline.extend({
-            initialize: function(polyline, options) {
-                this._polyline = polyline;
-                L.Util.setOptions(this, options);
-            },
-            
-            onAdd: function(map) {
-                this._map = map;
-                this._draw();
-            },
-            
-            _draw: function() {
-                const patterns = this.options.patterns;
-                if (!patterns || !patterns.length) return;
-                
-                patterns.forEach(pattern => {
-                    if (pattern.symbol && pattern.symbol.arrowHead) {
-                        // Simplified arrowhead drawing
-                        const latlngs = this._polyline.getLatLngs();
-                        if (latlngs.length < 2) return;
-                        
-                        const lastPoint = latlngs[latlngs.length - 1];
-                        const prevPoint = latlngs[latlngs.length - 2];
-                        
-                        // Calculate angle
-                        const dx = lastPoint.lng - prevPoint.lng;
-                        const dy = lastPoint.lat - prevPoint.lat;
-                        const angle = Math.atan2(dy, dx);
-                        
-                        // Create arrowhead marker
-                        const arrow = L.marker(lastPoint, {
-                            icon: L.divIcon({
-                                className: 'arrowhead-icon',
-                                html: '<div style="transform: rotate(' + angle + 'rad);">➤</div>',
-                                iconSize: [10, 10]
-                            })
-                        });
-                        
-                        arrow.addTo(this._map);
-                        this._arrowheads = this._arrowheads || [];
-                        this._arrowheads.push(arrow);
-                    }
-                });
-            },
-            
-            onRemove: function() {
-                if (this._arrowheads) {
-                    this._arrowheads.forEach(arrow => this._map.removeLayer(arrow));
-                }
-            }
-        });
-        
-        L.polylineDecorator = function(polyline, options) {
-            return new L.PolylineDecorator(polyline, options);
-        };
-        
-        L.Symbol = {
-            arrowHead: function(options) {
-                return {
-                    arrowHead: true,
-                    options: options
-                };
-            }
-        };
-    </script>
+    <!-- Main Content -->
+    <div class="col-md-9 col-lg-9 main-content">
+      <div id="loading" class="loading">
+        <div class="spinner-border text-primary me-3" role="status" aria-hidden="true"></div>
+        Loading water system data…
+      </div>
+
+      <div id="content" style="display:none;">
+        <div id="map"></div>
+
+        <ul class="nav nav-tabs mt-4" id="myTab" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="systems-tab" data-bs-toggle="tab" data-bs-target="#systems" type="button" role="tab">Systems</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="connections-tab" data-bs-toggle="tab" data-bs-target="#connections" type="button" role="tab">Connections</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="sources-tab" data-bs-toggle="tab" data-bs-target="#sources" type="button" role="tab">Sources</button>
+          </li>
+        </ul>
+
+        <div class="tab-content" id="myTabContent">
+          <div class="tab-pane fade show active" id="systems" role="tabpanel">
+            <table id="systemsTable" class="table table-striped w-100"></table>
+          </div>
+          <div class="tab-pane fade" id="connections" role="tabpanel">
+            <table id="connectionsTable" class="table table-striped w-100"></table>
+          </div>
+          <div class="tab-pane fade" id="sources" role="tabpanel">
+            <table id="sourcesTable" class="table table-striped w-100"></table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- JS libs -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet-polylinedecorator@1.7.0/dist/leaflet.polylineDecorator.min.js"></script>
+
+<script>
+/* -------------------- Data + App State -------------------- */
+let map;
+let systemsRaw = [];
+let sourcesRaw = [];
+let connectionsRaw = [];
+
+let systemsTable, sourcesTable, connectionsTable;
+
+let currentMarkers = [];
+let currentLines = [];
+let currentDecorators = [];
+
+/* Normalized views used for mapping/search (preserve originals for tables/downloads) */
+let systemsNorm = [];
+let sourcesNorm = [];
+let connectionsNorm = [];
+
+/* Cached filtered (original objects) for tables/download buttons */
+let filtered = { systems: [], sources: [], connections: [] };
+
+/* CSV locations (try newest first, then fallbacks) */
+const SYSTEMS_PATHS = [
+  'Data/20250908_fake_systems.csv',
+  'Data/20250903_fake_systems.csv'
+];
+const SOURCES_PATHS = [
+  'Data/20250908_fake_sources.csv',
+  'Data/20250903_fake_sources.csv'
+];
+const CONNECTIONS_PATHS = [
+  'Data/20250908_fake_links.csv',
+  'Data/20250903_fake_links.csv',
+  'Data/20250908_fake_connections.csv' // extra fallback name
+];
+
+/* -------------------- Utils -------------------- */
+const tryLoadFirst = async (paths) => {
+  for (const p of paths) {
+    try {
+      const data = await loadCSV(p);
+      // If Papa returns empty but with fields, still accept
+      if (Array.isArray(data) && data.length >= 0) return { data, path: p };
+    } catch (e) {
+      // continue
+    }
+  }
+  throw new Error('No CSV found at provided paths: ' + paths.join(', '));
+};
+
+function loadCSV(url){
+  return new Promise((resolve, reject) => {
+    Papa.parse(url, {
+      download: true,
+      header: true,
+      dynamicTyping: true,
+      skipEmptyLines: 'greedy',
+      complete: (res) => resolve(res.data),
+      error: (err) => reject(err)
+    });
+  });
+}
+
+/* CSV download for arrays of objects */
+function downloadCSVFromObjects(rows, filename){
+  if (!rows || rows.length === 0){
+    const blob = new Blob([""], {type:"text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    triggerDownload(url, filename);
+    return;
+  }
+  // Collect all keys across rows to include new columns
+  const keys = Array.from(rows.reduce((set, row) => {
+    Object.keys(row || {}).forEach(k => set.add(k));
+    return set;
+  }, new Set()));
+  const csv = [
+    keys.join(','),
+    ...rows.map(r => keys.map(k => csvEscape(r?.[k])).join(','))
+  ].join('\n');
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+  triggerDownload(URL.createObjectURL(blob), filename);
+}
+function csvEscape(val){
+  if (val === null || val === undefined) return '';
+  const s = String(val);
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
+  return s;
+}
+function triggerDownload(url, filename){
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/* -------------------- Initialization -------------------- */
+document.addEventListener('DOMContentLoaded', async () => {
+  try{
+    await loadAllData();
+  }catch(e){
+    console.warn('Failed to load CSVs, falling back to sample data.', e);
+    loadSampleData();
+  }
+
+  normalizeAll();
+  initMap();
+  addMapLegendControl();
+
+  initFiltersAndSearch();
+  initTables();
+
+  renderAll(); // initial render
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('content').style.display = 'block';
+});
+
+async function loadAllData(){
+  const [sys, src, con] = await Promise.all([
+    tryLoadFirst(SYSTEMS_PATHS),
+    tryLoadFirst(SOURCES_PATHS),
+    tryLoadFirst(CONNECTIONS_PATHS)
+  ]);
+  systemsRaw = sys.data;
+  sourcesRaw = src.data;
+  connectionsRaw = con.data;
+}
+
+/* Sample fallback if no CSVs */
+function loadSampleData(){
+  systemsRaw = [
+    {system_id:"S1", system_name:"Central Valley Water", pwsid:"CA123", county:"Fresno", population:50000, provider_type:"Municipal", is_wholesale:"Y", has_gw_supply:"Y", lon:-119.5, lat:36.5},
+    {system_id:"S2", system_name:"Coastal Water District", pwsid:"CA124", county:"Monterey", population:75000, provider_type:"District", is_wholesale:"N", has_gw_supply:"Y", lon:-121.5, lat:36.8},
+    {system_id:"S3", system_name:"Mountain Springs Water", pwsid:"CA125", county:"Tuolumne", population:12000, provider_type:"Private", is_wholesale:"N", has_gw_supply:"N", lon:-120.0, lat:38.0},
+    {system_id:"S4", system_name:"Bay Area Water Co.", pwsid:"CA126", county:"Alameda", population:150000, provider_type:"Municipal", is_wholesale:"Y", has_gw_supply:"Y", lon:-122.0, lat:37.8},
+    {system_id:"S5", system_name:"Delta Water Supply", pwsid:"CA127", county:"Sacramento", population:80000, provider_type:"District", is_wholesale:"Y", has_gw_supply:"N", lon:-121.3, lat:38.5}
+  ];
+  sourcesRaw = [
+    {source_id:"SRC1", source_name:"Sierra Snowmelt", source_type:"Surface", project:"State Project", capacity_mgd:250, source_lon:-119.0, source_lat:37.5},
+    {source_id:"SRC2", source_name:"Coastal Aquifer", source_type:"Groundwater", project:"Local", capacity_mgd:100, source_lon:-121.8, source_lat:36.6},
+    {source_id:"SRC3", source_name:"Feather River", source_type:"Surface", project:"State Project", capacity_mgd:300, source_lon:-121.0, source_lat:39.5},
+    {source_id:"SRC4", source_name:"San Joaquin Aquifer", source_type:"Groundwater", project:"Local", capacity_mgd:150, source_lon:-120.5, source_lat:37.0},
+    {source_id:"SRC5", source_name:"Bay Desalination", source_type:"Desalination", project:"Regional", capacity_mgd:50, source_lon:-122.4, source_lat:37.7}
+  ];
+  connectionsRaw = [
+    {from:"SRC1", to:"S1", volume_mgd:120, purchase:true, avg_pct_supply:80},
+    {from:"SRC1", to:"S4", volume_mgd:90, purchase:true, avg_pct_supply:60},
+    {from:"SRC2", to:"S2", volume_mgd:75, purchase:false, avg_pct_supply:75},
+    {from:"SRC3", to:"S5", volume_mgd:110, purchase:true, avg_pct_supply:70},
+    {from:"SRC4", to:"S1", volume_mgd:60, purchase:false, avg_pct_supply:40},
+    {from:"SRC4", to:"S3", volume_mgd:25, purchase:false, avg_pct_supply:85},
+    {from:"SRC5", to:"S4", volume_mgd:40, purchase:true, avg_pct_supply:30}
+  ];
+}
+
+/* -------------------- Normalization -------------------- */
+/* Try to tolerate column renames */
+function normalizeAll(){
+  systemsNorm = systemsRaw.map(s => {
+    const lon = pickNumber(s, ['lon','Lon','longitude','Longitude','x','X']);
+    const lat = pickNumber(s, ['lat','Lat','latitude','Latitude','y','Y']);
+    const pop = pickNumber(s, ['population','Population','pop','POP','pop_total']);
+    const size = pickString(s, ['system_size','size_category','size','System Size']);
+    const gw = pickYN(s, ['has_gw_supply','gw_supply','gw','GW','groundwater','has_groundwater']);
+    const id = pickString(s, ['system_id','sys_id','id','systemId','System ID']);
+    const name = pickString(s, ['system_name','name','system','System Name']);
+    const pwsid = pickString(s, ['pwsid','PWSID','pws_id','PWS Id']);
+
+    return { id, name, pwsid, lon, lat, pop, size, gw, _orig: s };
+  });
+
+  sourcesNorm = sourcesRaw.map(src => {
+    const lon = pickNumber(src, ['source_lon','lon','longitude','Longitude','x']);
+    const lat = pickNumber(src, ['source_lat','lat','latitude','Latitude','y']);
+    const id = pickString(src, ['source_id','id','sourceId']);
+    const name = pickString(src, ['source_name','name','Source Name']);
+    const type = pickString(src, ['source_type','type','Type']);
+    const project = pickString(src, ['project','Project']);
+    return { id, name, type, project, lon, lat, _orig: src };
+  });
+
+  connectionsNorm = connectionsRaw.map(c => {
+    const from = pickString(c, ['from','source_id','source','src']);
+    const to = pickString(c, ['to','system_id','system','dst','target']);
+    const purchased = pickBool(c, ['purchase','purchased','is_purchased','Purchased']);
+    const vol = pickNumber(c, ['volume_mgd','mgd','volume','Volume']);
+    const pct = pickNumber(c, ['avg_pct_supply','pct_supply','avg_pct','Avg % Supply']);
+    return { from, to, purchased, vol, pct, _orig: c };
+  });
+
+  // If no size category, create from population
+  const anySize = systemsNorm.some(s => !!s.size);
+  if (!anySize){
+    systemsNorm.forEach(s => {
+      const p = s.pop || 0;
+      if (p < 3000) s.size = '<3k';
+      else if (p < 10000) s.size = '3k–10k';
+      else if (p < 100000) s.size = '10k–100k';
+      else s.size = '100k+';
+    });
+  }
+}
+
+/* helpers for normalization */
+function pickString(obj, keys){ for(const k of keys){ if(obj && obj[k]!=null && obj[k] !== '') return String(obj[k]); } return ''; }
+function pickNumber(obj, keys){ for(const k of keys){ const v = Number(obj?.[k]); if(!isNaN(v)) return v; } return 0; }
+function pickYN(obj, keys){
+  for(const k of keys){
+    const v = obj?.[k];
+    if (v === undefined || v === null || v==='') continue;
+    const s = String(v).toLowerCase();
+    if (s==='y' || s==='yes' || s==='true' || s==='1') return 'Y';
+    if (s==='n' || s==='no' || s==='false' || s==='0') return 'N';
+  }
+  return 'Y'; // default to show all if unknown; will still be filterable via "All"
+}
+function pickBool(obj, keys){
+  for(const k of keys){
+    const v = obj?.[k];
+    if (typeof v === 'boolean') return v;
+    if (v !== undefined && v !== null && v!==''){
+      const s = String(v).toLowerCase();
+      if (['true','1','y','yes','purchased'].includes(s)) return true;
+      if (['false','0','n','no','direct','not purchased'].includes(s)) return false;
+    }
+  }
+  return null;
+}
+
+/* -------------------- Map -------------------- */
+function initMap(){
+  map = L.map('map', {center:[37.2,-119.4], zoom:6, zoomControl:true, attributionControl:true});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  setTimeout(()=> map.invalidateSize(), 150);
+}
+
+function addMapLegendControl(){
+  const Legend = L.Control.extend({
+    options: { position: 'bottomright' },
+    onAdd: function(){
+      const div = L.DomUtil.create('div','map-legend');
+      div.innerHTML = `
+        <div><strong>Map Legend</strong></div>
+        <div class="legend-row"><span class="legend-triangle"></span> <span>Water Source</span></div>
+        <div class="legend-row"><span class="legend-dot"></span> <span>Water System (size ∝ population)</span></div>
+        <div class="legend-row"><span class="legend-arrow"></span> <span>Connection (direction of flow)</span></div>
+      `;
+      return div;
+    }
+  });
+  map.addControl(new Legend());
+}
+
+function clearMap(){
+  currentMarkers.forEach(m => map.removeLayer(m));
+  currentLines.forEach(l => map.removeLayer(l));
+  currentDecorators.forEach(d => map.removeLayer(d));
+  currentMarkers = []; currentLines = []; currentDecorators = [];
+}
+
+function addToMap(data){
+  // Sources: red triangles
+  data.sources.forEach(src => {
+    const icon = L.divIcon({className:'triangle-marker outline', iconSize:[16,16]});
+    const marker = L.marker([src.lat, src.lon], {icon}).addTo(map);
+    const orig = src._orig || {};
+    marker.bindPopup(`
+      <b>Source:</b> ${escapeHtml(src.name)}<br/>
+      <b>Type:</b> ${escapeHtml(src.type)}<br/>
+      <b>Project:</b> ${escapeHtml(src.project || '')}
+    `);
+    currentMarkers.push(marker);
+  });
+
+  // Systems: blue circles scaled by population
+  data.systems.forEach(sys => {
+    const r = Math.max(4, Math.sqrt(sys.pop || 0) / 80);
+    const marker = L.circleMarker([sys.lat, sys.lon], {
+      radius: r, color:'darkblue', fillColor:'#06f', fillOpacity:.7, weight:1
+    }).addTo(map);
+    marker.bindPopup(`
+      <b>System:</b> ${escapeHtml(sys.name)} ${sys.pwsid ? '('+escapeHtml(sys.pwsid)+')':''}<br/>
+      <b>Population:</b> ${Number(sys.pop||0).toLocaleString()}<br/>
+      <b>Size:</b> ${escapeHtml(sys.size || '')}<br/>
+      <b>GW Supply:</b> ${escapeHtml(sys.gw || '')}
+    `);
+    currentMarkers.push(marker);
+  });
+
+  // Connections with arrowheads
+  data.connections.forEach(conn => {
+    const from = data.sources.find(s => s.id === conn.from);
+    const to = data.systems.find(s => s.id === conn.to);
+    if (!from || !to) return;
+
+    const line = L.polyline([[from.lat, from.lon], [to.lat, to.lon]], {color:'#0066cc', weight:3}).addTo(map);
+    const purchasedText = conn.purchased === null ? '—' : (conn.purchased ? 'Yes' : 'No');
+    line.bindPopup(`
+      <b>From:</b> ${escapeHtml(from.name)} → <b>To:</b> ${escapeHtml(to.name)}<br/>
+      <b>Purchased:</b> ${purchasedText}
+      ${conn.vol ? `<br/><b>Volume:</b> ${escapeHtml(String(conn.vol))} MGD` : ''}
+      ${conn.pct ? `<br/><b>Avg % Supply:</b> ${escapeHtml(String(conn.pct))}%` : ''}
+    `);
+
+    const decorator = L.polylineDecorator(line, {
+      patterns: [{
+        offset: '100%',
+        repeat: 0,
+        symbol: L.Symbol.arrowHead({
+          pixelSize: 14, polygon: false,
+          pathOptions: { color:'#0066cc', weight:3, opacity:1 }
+        })
+      }]
+    }).addTo(map);
+
+    currentLines.push(line);
+    currentDecorators.push(decorator);
+  });
+}
+
+/* -------------------- Filters, Search, UI -------------------- */
+function initFiltersAndSearch(){
+  // Populate dropdowns
+  populateDropdown('sourceType', uniqNonEmpty(sourcesNorm.map(s=>s.type)));
+  populateDropdown('project', uniqNonEmpty(sourcesNorm.map(s=>s.project)));
+  populateDropdown('systemSize', uniqNonEmpty(systemsNorm.map(s=>s.size)));
+
+  // Populate datalists for typeahead
+  fillDatalist('systemNameList', uniqNonEmpty(systemsNorm.map(s=>s.name)));
+  fillDatalist('sourceNameList', uniqNonEmpty(sourcesNorm.map(s=>s.name)));
+  fillDatalist('pwsidList', uniqNonEmpty(systemsNorm.map(s=>s.pwsid)));
+
+  // Change handlers
+  document.getElementById('gwSupply').addEventListener('change', renderAll);
+  document.getElementById('systemSize').addEventListener('change', renderAll);
+  document.getElementById('sourceType').addEventListener('change', renderAll);
+  document.getElementById('project').addEventListener('change', renderAll);
+  document.getElementById('purchaseType').addEventListener('change', renderAll);
+
+  // Search + zoom
+  document.getElementById('zoomSelected').addEventListener('click', zoomToSelection);
+  document.getElementById('resetView').addEventListener('click', resetView);
+  ['searchSystemInput','searchSourceInput','searchPWSIDInput'].forEach(id=>{
+    document.getElementById(id).addEventListener('keydown', e=>{
+      if (e.key==='Enter'){ zoomToSelection(); }
+    });
+  });
+
+  // Downloads
+  document.getElementById('downloadSystems').addEventListener('click', ()=> downloadCSVFromObjects(filtered.systems, 'systems_filtered.csv'));
+  document.getElementById('downloadSources').addEventListener('click', ()=> downloadCSVFromObjects(filtered.sources, 'sources_filtered.csv'));
+  document.getElementById('downloadConnections').addEventListener('click', ()=> downloadCSVFromObjects(filtered.connections, 'connections_filtered.csv'));
+}
+
+function populateDropdown(selectId, values){
+  const sel = document.getElementById(selectId);
+  const current = sel.value; // preserve choice if re-populating
+  sel.innerHTML = '<option value="All">All</option>';
+  values.forEach(v=>{
+    const opt = document.createElement('option');
+    opt.value = v; opt.textContent = v;
+    sel.appendChild(opt);
+  });
+  if (Array.from(sel.options).some(o=>o.value===current)) sel.value = current;
+}
+
+function fillDatalist(listId, values){
+  const dl = document.getElementById(listId);
+  dl.innerHTML = '';
+  values.forEach(v=>{
+    const opt = document.createElement('option');
+    opt.value = v;
+    dl.appendChild(opt);
+  });
+}
+
+function uniqNonEmpty(arr){
+  return Array.from(new Set(arr.filter(v => v !== null && v !== undefined && v !== ''))).sort((a,b)=>{
+    // natural-like sort
+    return String(a).localeCompare(String(b), undefined, {numeric:true, sensitivity:'base'});
+  });
+}
+
+function filterAll(){
+  const gw = document.getElementById('gwSupply').value;     // 'All'|'Y'|'N'
+  const size = document.getElementById('systemSize').value; // 'All'|category
+  const srcType = document.getElementById('sourceType').value; // 'All'|value
+  const proj = document.getElementById('project').value;    // 'All'|value
+  const purch = document.getElementById('purchaseType').value; // 'All'|'Purchased'|'Direct'
+
+  // Start with all
+  let sys = systemsNorm.slice();
+  let src = sourcesNorm.slice();
+  let con = connectionsNorm.slice();
+
+  // System filters
+  if (gw !== 'All') sys = sys.filter(s => s.gw === gw);
+  if (size !== 'All') sys = sys.filter(s => (s.size || '') === size);
+
+  // Source filters
+  if (srcType !== 'All') src = src.filter(s => (s.type || '') === srcType);
+  if (proj !== 'All') src = src.filter(s => (s.project || '') === proj);
+
+  // Connection filters
+  if (purch !== 'All'){
+    const want = (purch === 'Purchased');
+    con = con.filter(c => c.purchased === want);
+  }
+
+  // Linked filtering: keep connections where endpoints survive, then trim endpoints to those in connections
+  con = con.filter(c => sys.some(s => s.id===c.to) && src.some(s => s.id===c.from));
+  sys = sys.filter(s => con.some(c => c.to===s.id));
+  src = src.filter(s => con.some(c => c.from===s.id));
+
+  // Cache filtered *original* rows for tables/downloads
+  filtered = {
+    systems: sys.map(s => s._orig),
+    sources: src.map(s => s._orig),
+    connections: con.map(c => c._orig)
+  };
+
+  // Return filtered normalized for mapping
+  return { systems: sys, sources: src, connections: con };
+}
+
+function renderAll(){
+  const d = filterAll();
+
+  // Update tables (with original objects so columns reflect your latest schema)
+  updateDataTable(systemsTable, filtered.systems);
+  updateDataTable(sourcesTable, filtered.sources);
+  updateDataTable(connectionsTable, filtered.connections);
+
+  // Map
+  clearMap();
+  addToMap(d);
+
+  // Keep map sized right
+  setTimeout(()=> map.invalidateSize(), 100);
+}
+
+function zoomToSelection(){
+  const sysText = document.getElementById('searchSystemInput').value.trim();
+  const srcText = document.getElementById('searchSourceInput').value.trim();
+  const pwsidText = document.getElementById('searchPWSIDInput').value.trim();
+
+  if (pwsidText){
+    const s = systemsNorm.find(x => (x.pwsid||'').toLowerCase() === pwsidText.toLowerCase());
+    if (s && validCoords(s.lat,s.lon)){ map.flyTo([s.lat, s.lon], 10); return; }
+  }
+  if (sysText){
+    const s = systemsNorm.find(x => (x.name||'').toLowerCase() === sysText.toLowerCase());
+    if (s && validCoords(s.lat,s.lon)){ map.flyTo([s.lat, s.lon], 10); return; }
+  }
+  if (srcText){
+    const s = sourcesNorm.find(x => (x.name||'').toLowerCase() === srcText.toLowerCase());
+    if (s && validCoords(s.lat,s.lon)){ map.flyTo([s.lat, s.lon], 10); return; }
+  }
+}
+function validCoords(lat,lon){ return isFinite(lat) && isFinite(lon) && Math.abs(lat)<=90 && Math.abs(lon)<=180; }
+
+function resetView(){
+  // clear searches
+  ['searchSystemInput','searchSourceInput','searchPWSIDInput'].forEach(id => document.getElementById(id).value = '');
+  // reset filters
+  ['gwSupply','systemSize','sourceType','project','purchaseType'].forEach(id => document.getElementById(id).value = 'All');
+  map.setView([37.2,-119.4], 6);
+  renderAll();
+}
+
+/* -------------------- Tables -------------------- */
+function initTables(){
+  systemsTable = $('#systemsTable').DataTable({
+    data: [],
+    columns: [],
+    pageLength: 5,
+    autoWidth: false,
+    deferRender: true
+  });
+  connectionsTable = $('#connectionsTable').DataTable({
+    data: [],
+    columns: [],
+    pageLength: 5,
+    autoWidth: false,
+    deferRender: true
+  });
+  sourcesTable = $('#sourcesTable').DataTable({
+    data: [],
+    columns: [],
+    pageLength: 5,
+    autoWidth: false,
+    deferRender: true
+  });
+}
+
+function updateDataTable(dt, rows){
+  // Build columns dynamically from keys
+  const cols = buildColumnsFromRows(rows);
+  dt.clear();
+  dt.columns().every(function(){ /* no-op to avoid warning when reconfiguring */ });
+  dt.destroy(); // rebuild to apply new columns when schema changes
+
+  // Recreate with new columns
+  const tableId = dt.table().node().id;
+  const newDT = $('#'+tableId).DataTable({
+    data: rows,
+    columns: cols,
+    pageLength: 5,
+    autoWidth: false,
+    deferRender: true
+  });
+
+  // Replace reference
+  if (tableId === 'systemsTable') systemsTable = newDT;
+  else if (tableId === 'connectionsTable') connectionsTable = newDT;
+  else if (tableId === 'sourcesTable') sourcesTable = newDT;
+}
+
+function buildColumnsFromRows(rows){
+  const keys = Array.from(rows.reduce((set, r)=>{ Object.keys(r||{}).forEach(k=>set.add(k)); return set; }, new Set()));
+  // Put common identifiers first if present
+  const preferredOrder = [
+    'system_id','system_name','pwsid','county','population','provider_type','is_wholesale','has_gw_supply',
+    'source_id','source_name','source_type','project','capacity_mgd',
+    'from','to','purchase','purchased','volume_mgd','avg_pct_supply'
+  ];
+  keys.sort((a,b)=>{
+    const ia = preferredOrder.indexOf(a); const ib = preferredOrder.indexOf(b);
+    if (ia>=0 && ib>=0) return ia-ib;
+    if (ia>=0) return -1;
+    if (ib>=0) return 1;
+    return a.localeCompare(b);
+  });
+  return keys.map(k => ({ title: prettify(k), data: k }));
+}
+function prettify(s){
+  return String(s).replace(/_/g,' ').replace(/\b\w/g, c=>c.toUpperCase());
+}
+
+/* -------------------- Misc -------------------- */
+function escapeHtml(str){
+  if (str===null || str===undefined) return '';
+  return String(str).replace(/[&<>"'`=\/]/g, function (s) {
+    return ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;'
+    })[s];
+  });
+}
+</script>
 </body>
 </html>
