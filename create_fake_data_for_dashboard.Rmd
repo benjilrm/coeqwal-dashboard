@@ -87,35 +87,47 @@ create_connection_lines <- function(connections_df, sources_df, systems_df) {
   lines_list <- list()
   
   for (i in 1:nrow(connections_df)) {
-    source_coords <- sources_df[sources_df$source_id == connections_df$from[i], c("source_lon", "source_lat")]
-    system_coords <- systems_df[systems_df$system_id == connections_df$to[i], c("lon", "lat")]
+    source_coords <- sources_df[sources_df$source_id == connections_df$source_id[i], c("source_lon", "source_lat")]
+    system_coords <- systems_df[systems_df$pwsid == connections_df$pwsid[i], c("lon", "lat")]
     
     if (nrow(source_coords) > 0 && nrow(system_coords) > 0) {
       line <- st_linestring(rbind(
         as.numeric(c(source_coords$source_lon, source_coords$source_lat)),
         as.numeric(c(system_coords$lon, system_coords$lat))))
-      lines_list[[i]] <- line}}
+      lines_list[[i]] <- line
+    } else {
+      lines_list[[i]] <- NULL
+    }
+  }
   
   valid_lines <- !sapply(lines_list, is.null)
   if (sum(valid_lines) > 0) {
     st_sf(
       connections_df[valid_lines, ],
       geometry = st_sfc(lines_list[valid_lines], crs = 4326)
-    )} else {NULL}}
+    )
+  } else {
+    NULL
+  }
+}
 ```
 
+Calculate # of systems served by each source
 ```{r}
 systems_served_by_source = connections%>%
   group_by(source_id)%>%
   reframe(num_systems_served = n())
 
-sw_sources_by_system = connections%>%
-  group_by(pwsid)%>%
-  reframe(num_sw_sources = n())
-
 sources = sources%>%
   left_join(., systems_served_by_source, by = "source_id")%>%
   mutate(num_systems_served = replace_na(num_systems_served, 0))
+```
+
+Calculate # of SW sources for each system
+```{r}
+sw_sources_by_system = connections%>%
+  group_by(pwsid)%>%
+  reframe(num_sw_sources = n())
 
 systems = systems%>%
   left_join(., sw_sources_by_system, by = "pwsid")%>%
@@ -125,13 +137,12 @@ systems = systems%>%
 
 # Export
 ```{r}
-#st_write(st_as_sf(systems, coords = c("lon", "lat"), crs = crs), "Data/Interactive map/20250903_fake_systems.shp", delete_dsn = T)
-write.csv(systems, "Data/20250908_fake_systems.csv", row.names = F)
+st_write(st_as_sf(systems, coords = c("lon", "lat"), crs = crs), "Data/Shapefiles/20250909_fake_systems.shp", delete_dsn = T)
+write.csv(systems, "Data/20250909_fake_systems.csv", row.names = F)
 
+st_write(st_as_sf(sources, coords = c("source_lon", "source_lat"), crs = crs), "Data/Shapefiles/20250909_fake_sources.shp", delete_dsn = T)
+write.csv(sources, "Data/20250909_fake_sources.csv", row.names = F)
 
-#st_write(st_as_sf(sources, coords = c("source_lon", "source_lat"), crs = crs), "Data/Interactive map/20250903_fake_sources.shp", delete_dsn = T)
-write.csv(sources, "Data/20250908_fake_sources.csv", row.names = F)
-
-#st_write(create_connection_lines(connections, sources, systems), "Data/Interactive map/20250903_fake_links.shp", delete_dsn = T)
-write.csv(connections, "Data/20250908_fake_links.csv", row.names = F)
+st_write(create_connection_lines(connections, sources, systems), "Data/Shapefiles/20250909_fake_links.shp", delete_dsn = T)
+write.csv(connections, "Data/20250909_fake_links.csv", row.names = F)
 ```

@@ -1,0 +1,11 @@
+"system_name","pwsid","county","population","pop_bin","provider_type","is_wholesale","has_gw_supply","gw_mcl_compliant","lat","lon","num_sw_sources"
+"San Francisco PWS","CA1234567","San Francisco",147351,"Large","Retail","N","Yes","NA",36.1118330078898,-118.593996792566,3
+"Los Angeles PWS","CA2345678","Los Angeles",395211,"Large","Retail","Y","Yes","Yes",35.5091100451536,-122.49656374671,2
+"San Diego PWS","CA3456789","San Diego",207444,"Large","Retail","N","Yes","Yes",38.4805202138377,-119.885758842458,3
+"Sacramento PWS","CA4567890","Sacramento",442094,"Small","Retail","N","Yes","Yes",36.4668398776557,-121.289346131613,2
+"Fresno PWS","CA5678901","Fresno",470531,"Large","Both","Y","Yes","Yes",38.4553539417684,-120.411009042524,3
+"Oakland PWS","CA6789012","Alameda",27550,"Small","Wholesale","N","Yes","NA",38.4681423023576,-119.129759481992,1
+"San Jose PWS","CA7890123","Santa Clara",266412,"Large","Both","N","Yes","No",38.3688827661099,-120.565111499163,1
+"Long Beach PWS","CA8901234","Los Angeles",446747,"Small","Wholesale","N","No","Yes",36.4190742818173,-121.888755166088,1
+"Bakersfield PWS","CA9012345","Kern",277960,"Small","Retail","N","Yes","NA",38.1496133725159,-121.160092900041,3
+"Santa Cruz PWS","CA0123456","Santa Cruz",231024,"Small","Wholesale","N","Yes","Yes",37.460716223577,-118.825694269035,2
