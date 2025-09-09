@@ -138,11 +138,14 @@ systems = systems%>%
 # Export
 ```{r}
 st_write(st_as_sf(systems, coords = c("lon", "lat"), crs = crs), "Data/Shapefiles/20250909_fake_systems.shp", delete_dsn = T)
+st_write(st_as_sf(systems, coords = c("lon", "lat"), crs = crs), "Data/20250909_fake_systems.gpkg", delete_dsn = T)
 write.csv(systems, "Data/20250909_fake_systems.csv", row.names = F)
 
 st_write(st_as_sf(sources, coords = c("source_lon", "source_lat"), crs = crs), "Data/Shapefiles/20250909_fake_sources.shp", delete_dsn = T)
+st_write(st_as_sf(sources, coords = c("source_lon", "source_lat"), crs = crs), "Data/20250909_fake_sources.gpkg", delete_dsn = T)
 write.csv(sources, "Data/20250909_fake_sources.csv", row.names = F)
 
 st_write(create_connection_lines(connections, sources, systems), "Data/Shapefiles/20250909_fake_links.shp", delete_dsn = T)
+st_write(create_connection_lines(connections, sources, systems), "Data/20250909_fake_links.gpkg", delete_dsn = T)
 write.csv(connections, "Data/20250909_fake_links.csv", row.names = F)
 ```
