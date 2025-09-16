@@ -13,3 +13,17 @@ This repository is set up with Github Pages to build, host, and deploy an intera
 
 ## Deployment details:
 By navigating to 'Settings' and then to 'Pages' in the menu on the left, you can see the GitHub Pages information and control deployment of the html as a webpage. 
+
+## To-dos
+- Reorganise project on dev branch such that index.html is broken up into multiple smaller scripts, for greater ease of navigation and editing.
+Ex:
+your-repo-name/
+├── index.html          # The main HTML file, now much simpler
+├── css/
+│   └── style.css       # For custom styling rules
+├── js/
+│   ├── config.js       # Map settings, intitial variables, etc.
+│   ├── map.js          # Code to initialize the map, adding base layers, etc.
+│   └── features.js     # Code for specific dashboard functionality and interactive features
+├──Data/                # As is
+│   └── ...
