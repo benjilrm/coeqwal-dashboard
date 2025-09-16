@@ -19,6 +19,7 @@ By navigating to 'Settings' and then to 'Pages' in the menu on the left, you can
 Ex:
 your-repo-name/
 ├── index.html          # The main HTML file, now much simpler
+
 ├── css/
 │   └── style.css       # For custom styling rules
 ├── js/
